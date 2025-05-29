@@ -317,9 +317,9 @@ Dự án này được cấp phép theo MIT License - xem file [LICENSE](LICENSE
 
 ## 👥 Team
 
-- **Lead Developer**: [Your Name]
-- **Security Architect**: [Name]
-- **Frontend Developer**: [Name]
+- **Lead Developer**: [Anh + Đạt]
+- **Security Architect**: [Anh + Đạt]
+- **Frontend Developer**: [Anh + Đat]
 
 ## 📞 Support
 
