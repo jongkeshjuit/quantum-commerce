@@ -55,7 +55,7 @@ class RegisterRequest(BaseModel):
     name: str
     password: str
     user_type: str = Field(default="customer", pattern="^(customer|merchant|admin)$")
-    # user_type: str = Field(default="customer", pattern="^(customer|merchant)$")
+    # user_type: str = Field(default="customer", pattern="^(customer|merchant|admin)$")
 
 class LoginRequest(BaseModel):
     email: EmailStr
