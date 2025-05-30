@@ -1,4 +1,4 @@
-"""Mock Dilithium Signer for Testing"""
+"""Mock Dilithium Signer for Testing - Fixed"""
 import uuid
 import base64
 import json
@@ -53,20 +53,19 @@ class DilithiumSigner:
 class DilithiumKeyVault:
     def __init__(self, vault_path: str = "./keys/dilithium"):
         self.vault_path = vault_path
-        self._keys = {}
+        # Always have a default key
+        self._keys = {
+            "default_key_id": {
+                "owner": "merchant@quantumshop.com",
+                "purpose": "transaction_signing",
+                "algorithm": "Dilithium2",
+                "created_at": datetime.utcnow().isoformat(),
+                "expires_at": "2025-12-31T23:59:59",
+                "status": "active"
+            }
+        }
         
     def list_active_keys(self) -> Dict[str, Any]:
-        if not self._keys:
-            # Return default key
-            return {
-                "default_key_id": {
-                    "owner": "merchant@quantumshop.com",
-                    "purpose": "transaction_signing",
-                    "algorithm": "Dilithium2",
-                    "created_at": datetime.utcnow().isoformat(),
-                    "status": "active"
-                }
-            }
         return self._keys
     
     def store_keypair(self, public_key: bytes, secret_key: bytes, key_id: str, owner: str, purpose: str = "transaction_signing"):
@@ -75,6 +74,7 @@ class DilithiumKeyVault:
             "purpose": purpose,
             "algorithm": "Dilithium2",
             "created_at": datetime.utcnow().isoformat(),
+            "expires_at": "2025-12-31T23:59:59",
             "status": "active"
         }
         

@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: qsc_postgres_prod
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - qsc_network
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: qsc_redis_prod
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - qsc_network
+    restart: always
+
+  # API Backend
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qsc_api_prod
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      - REDIS_URL=redis://default:${REDIS_PASSWORD}@redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - IBE_MASTER_PASSWORD=${IBE_MASTER_PASSWORD}
+      - ENVIRONMENT=production
+    volumes:
+      - ./keys:/app/keys:ro
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - qsc_network
+    restart: always
+
+  # Frontend
+  frontend:
+    build:
+      context: ./webapp
+      dockerfile: Dockerfile.prod
+    container_name: qsc_frontend_prod
+    environment:
+      - VITE_API_URL=/api
+    networks:
+      - qsc_network
+    restart: always
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: qsc_nginx_prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - api
+      - frontend
+    networks:
+      - qsc_network
+    restart: always
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  # Certbot for SSL
+  certbot:
+    image: certbot/certbot
+    container_name: qsc_certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  qsc_network:
+    driver: bridge

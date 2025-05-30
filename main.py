@@ -3,7 +3,7 @@ Quantum-Secure E-commerce API
 Main FastAPI application with secure endpoints
 """
 
-from fastapi import FastAPI, HTTPException, Depends, Security, status
+from fastapi import FastAPI, HTTPException, Depends, Security, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -11,9 +11,24 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, List, Dict, Any
 from decimal import Decimal
 from datetime import datetime, timedelta
+from services.auth_service import auth_service
 import os
 import json
 import jwt
+import time
+import uvicorn
+from database.schema import Base, User
+from sqlalchemy import create_engine, func
+from sqlalchemy.orm import sessionmaker
+from database.schema import Transaction, Base
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://qsc_user:secure_password@localhost:5432/quantum_commerce"
+)
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 from contextlib import asynccontextmanager
 
 from services.payment_service import (
@@ -24,15 +39,23 @@ from services.payment_service import (
 )
 from crypto.ibe_system import IBESystem, IBEKeyManager
 from crypto.dilithium_signer import DilithiumSigner, TransactionVerifier, DilithiumKeyVault
-
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from fastapi.responses import Response
+from monitoring.metrics import (
+    track_api_request, 
+    api_requests,
+    payment_counter,
+    active_users,
+    system_health
+)
 
 # Pydantic models for API
 class RegisterRequest(BaseModel):
     email: EmailStr
     name: str
     password: str
-    user_type: str = Field(default="customer", pattern="^(customer|merchant)$")
-
+    user_type: str = Field(default="customer", pattern="^(customer|merchant|admin)$")
+    # user_type: str = Field(default="customer", pattern="^(customer|merchant|admin)$")
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -133,7 +156,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React frontend
+    allow_origins=["http://localhost:3000", "*"],  # React frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -187,67 +210,110 @@ async def root():
     }
 
 
+# @app.post("/api/auth/register", response_model=AuthResponse)
+# async def register(request: RegisterRequest):
+#     """Register new user and issue IBE key"""
+#     try:
+#         # In production, check if user exists in database
+#         # For demo, create user
+        
+#         # Generate IBE private key for user
+#         master_key = ibe_key_manager.load_master_key(password="secure_master_password")
+#         user_ibe_key = ibe_system.extract_user_key(request.email, master_key)
+        
+#         # Create user record (in production, save to database)
+#         user_id = f"user_{request.email.split('@')[0]}_{datetime.utcnow().timestamp()}"
+        
+#         # Create access token
+#         access_token = create_access_token(
+#             data={
+#                 "sub": user_id,
+#                 "email": request.email,
+#                 "user_type": request.user_type
+#             }
+#         )
+        
+#         return AuthResponse(
+#             access_token=access_token,
+#             user_id=user_id,
+#             email=request.email,
+#             ibe_key_issued=True
+#         )
+        
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail=f"Registration failed: {str(e)}"
+#         )
+# Update endpoint register
 @app.post("/api/auth/register", response_model=AuthResponse)
 async def register(request: RegisterRequest):
     """Register new user and issue IBE key"""
     try:
-        # In production, check if user exists in database
-        # For demo, create user
-        
-        # Generate IBE private key for user
-        master_key = ibe_key_manager.load_master_key(password="secure_master_password")
-        user_ibe_key = ibe_system.extract_user_key(request.email, master_key)
-        
-        # Create user record (in production, save to database)
-        user_id = f"user_{request.email.split('@')[0]}_{datetime.utcnow().timestamp()}"
-        
-        # Create access token
-        access_token = create_access_token(
-            data={
-                "sub": user_id,
-                "email": request.email,
-                "user_type": request.user_type
-            }
-        )
-        
-        return AuthResponse(
-            access_token=access_token,
-            user_id=user_id,
+        result = await auth_service.register_user(
             email=request.email,
-            ibe_key_issued=True
+            name=request.name,
+            password=request.password,
+            user_type=request.user_type
         )
-        
-    except Exception as e:
+        return result
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Registration failed: {str(e)}"
         )
 
 
-@app.post("/api/auth/login", response_model=AuthResponse)
-async def login(request: LoginRequest):
-    """Authenticate user"""
-    # In production, verify password hash from database
-    # For demo, accept any valid email format
-    
-    user_id = f"user_{request.email.split('@')[0]}"
-    
-    # Create access token
-    access_token = create_access_token(
-        data={
-            "sub": user_id,
-            "email": request.email,
-            "user_type": "customer"
-        }
-    )
-    
-    return AuthResponse(
-        access_token=access_token,
-        user_id=user_id,
-        email=request.email,
-        ibe_key_issued=True
-    )
 
+# @app.post("/api/auth/login", response_model=AuthResponse)
+# async def login(request: LoginRequest):
+#     """Authenticate user"""
+#     # In production, verify password hash from database
+#     # For demo, accept any valid email format
+    
+#     user_id = f"user_{request.email.split('@')[0]}"
+    
+#     # Create access token
+#     access_token = create_access_token(
+#         data={
+#             "sub": user_id,
+#             "email": request.email,
+#             "user_type": "customer"
+#         }
+#     )
+    
+#     return AuthResponse(
+#         access_token=access_token,
+#         user_id=user_id,
+#         email=request.email,
+#         ibe_key_issued=True
+#     )
+# Update endpoint login
+@app.post("/api/auth/login", response_model=AuthResponse)
+async def login(request: LoginRequest, req: Request):
+    """Authenticate user"""
+    try:
+        # Get client info
+        ip_address = req.client.host
+        user_agent = req.headers.get("user-agent")
+        
+        result = await auth_service.login_user(
+            email=request.email,
+            password=request.password,
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
 
 @app.post("/api/payments/process", response_model=PaymentResponse)
 async def process_payment(
@@ -396,6 +462,98 @@ async def list_transactions(
         "offset": offset
     }
 
+# Admin endpoints 
+@app.get("/api/admin/transactions")
+async def get_admin_transactions(
+    current_user: dict = Depends(verify_token),
+    limit: int = 20
+):
+    """Get all transactions (admin only)"""
+    # Check if user is admin
+    if current_user.get("user_type") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    db = SessionLocal()
+    try:
+        transactions = db.query(Transaction).order_by(
+            Transaction.created_at.desc()
+        ).limit(limit).all()
+        
+        return {
+            "transactions": [
+                {
+                    "transaction_id": tx.transaction_id,
+                    "amount": float(tx.amount),
+                    "currency": tx.currency,
+                    "status": tx.status,
+                    "timestamp": tx.created_at.isoformat(),
+                    "customer_id": tx.customer_id
+                }
+                for tx in transactions
+            ]
+        }
+    finally:
+        db.close()
+
+@app.get("/api/admin/stats")
+async def get_admin_stats(
+    current_user: dict = Depends(verify_token)
+):
+    """Get system statistics (admin only)"""
+    if current_user.get("user_type") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    db = SessionLocal()
+    try:
+        total_transactions = db.query(Transaction).count()
+        completed_transactions = db.query(Transaction).filter(
+            Transaction.status == "completed"
+        ).count()
+        total_revenue = db.query(func.sum(Transaction.amount)).filter(
+            Transaction.status == "completed"
+        ).scalar() or 0
+        active_users = db.query(User).count()
+        
+        success_rate = (completed_transactions / total_transactions * 100) if total_transactions > 0 else 0
+        
+        return {
+            "total_transactions": total_transactions,
+            "total_revenue": float(total_revenue),
+            "active_users": active_users,
+            "success_rate": success_rate
+        }
+    finally:
+        db.close()
+
+# Thêm endpoint này vào main.py
+@app.get("/metrics")
+async def get_metrics():
+    """Prometheus metrics endpoint"""
+    return Response(
+        generate_latest(),
+        media_type=CONTENT_TYPE_LATEST
+    )
+
+# Thêm middleware để track requests
+@app.middleware("http")
+async def track_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    
+    # Track request metrics
+    api_requests.labels(
+        method=request.method,
+        endpoint=request.url.path,
+        status_code=response.status_code
+    ).inc()
+    
+    return response
 
 @app.get("/api/crypto/ibe/public-params")
 async def get_ibe_public_params():

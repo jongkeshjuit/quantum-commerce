@@ -336,6 +336,115 @@ Dự án này được cấp phép theo MIT License - xem file [LICENSE](LICENSE
 - [ ] Advanced fraud detection
 - [ ] Multi-tenant support
 
+<br>
+------------------------------------------------------------------------------------------------------------------
+
+(venv) root@DESKTOP-DB0G7EJ:~/quantum-secure-commerce# curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@quantumshop.com",
+    "name": "Admin User",
+    "password": "AdminPass123!",
+    "user_type": "admin"
+  }'
+{"access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlY2VkYjA0ZC0zOTc4LTQ0MjctYTdhMy1mNmU1MWZjNDI2ODkiLCJlbWFpbCI6ImFkbWluQHF1YW50dW1zaG9wLmNvbSIsInVzZXJfdHlwZSI6ImFkbWluIiwiZXhwIjoxNzQ4NjY1ODU5fQ.RuC6O39GNFokia6UH7lOvs9sxWdmjjCOZveH5i0qhq8","token_type":"bearer","user_id":"ecedb04d-3978-4427-a7a3-f6e51fc42689","email":"admin@quantumshop.com","ibe_key_issued":true}(venv) root@DESKTOP-DB0G7EJ:~/quantum-secure-commerce# ./test_api.sh 
+=== Testing Quantum-Secure E-Commerce API ===
+
+1. Testing health check...
+✓ Health check passed
+
+2. Registering new user: test_1748579475@example.com
+✓ Registration successful
+Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzZ...
+
+3. Testing login...
+✓ Login successful
+
+4. Processing payment...
+✓ Payment processed successfully
+Transaction ID: TXN-8A10CC24FDEF
+
+5. Listing transactions...
+✓ Transactions retrieved
+Total transactions: 5
+
+6. Verifying transaction...
+✓ Transaction verified
+Valid: true
+
+7. Getting IBE public parameters...
+✓ IBE params retrieved
+
+8. Getting merchant public keys...
+✓ Merchant keys retrieved
+
+9. Testing metrics endpoint...
+✓ Metrics endpoint working
+
+10. Testing admin endpoint (should fail)...
+✓ Admin protection working
+
+=== Test Summary ===
+✓ API is working correctly!
+- User registered: test_1748579475@example.com
+- Payment processed
+- Security features operational
+- Metrics collecting data
+(venv) root@DESKTOP-DB0G7EJ:~/quantum-secure-commerce# ./tests/test_api_full.py 
+
+==================================================
+Quantum-Secure E-Commerce API Test Suite
+==================================================
+
+
+Test 1: Test 1: Health Check
+ℹ Testing health check...
+✓ Health check passed
+
+Test 2: Test 2: User Registration
+ℹ Registering user: test_1748579499@example.com
+✓ Registration successful, token: eyJhbGciOiJIUzI1NiIsInR5cCI6Ik...
+
+Test 3: Test 3: User Login
+ℹ Testing login...
+✓ Login successful
+
+Test 4: Test 4: Process Payment
+ℹ Processing payment...
+✓ Payment processed: TXN-BDF662EE4D52
+ℹ Signature: MOCK_SIGNATURE_BASE64_ENCODED...
+
+Test 5: Test 5: List Transactions
+ℹ Listing transactions...
+✓ Retrieved 5 transactions
+
+Test 6: Test 6: Verify Transaction
+ℹ Verifying transaction: TXN-BDF662EE4D52
+✓ Transaction verification: Valid
+
+Test 7: Test 7: Crypto Endpoints
+ℹ Testing crypto endpoints...
+✓ IBE public params retrieved
+✓ Merchant public keys retrieved
+
+Test 8: Test 8: Metrics Endpoint
+ℹ Testing metrics endpoint...
+✓ Metrics endpoint working
+
+Test 9: Test 9: Admin Protection
+ℹ Testing admin protection...
+✓ Admin protection working correctly
+
+==================================================
+Test Summary
+==================================================
+
+Passed: 10
+Failed: 0
+Total: 10
+
+🎉 All tests passed! API is working correctly.
+
 ---
 
 **Note**: Đây là implementation demo cho mục đích học tập. Trong production, cần thêm nhiều security measures và optimizations.

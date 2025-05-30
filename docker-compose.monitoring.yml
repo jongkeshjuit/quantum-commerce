@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: qsc_prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    networks:
+      - quantum-secure-commerce_default
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: qsc_grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=quantum_secure_admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3030:3000"
+    networks:
+      - quantum-secure-commerce_default
+    restart: unless-stopped
+
+  # PostgreSQL Exporter
+  postgres-exporter:
+    image: wrouesnel/postgres_exporter:latest
+    container_name: qsc_postgres_exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://qsc_user:secure_password@postgres:5432/quantum_commerce?sslmode=disable"
+    ports:
+      - "9187:9187"
+    networks:
+      - quantum-secure-commerce_default
+    restart: unless-stopped
+
+  # Redis Exporter
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: qsc_redis_exporter
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+      REDIS_PASSWORD: "redis_secure_pass"
+    ports:
+      - "9121:9121"
+    networks:
+      - quantum-secure-commerce_default
+    restart: unless-stopped
+
+  # Node Exporter for system metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: qsc_node_exporter
+    ports:
+      - "9100:9100"
+    networks:
+      - quantum-secure-commerce_default
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  quantum-secure-commerce_default:
+    external: true
