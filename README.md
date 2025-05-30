@@ -444,7 +444,20 @@ Failed: 0
 Total: 10
 
 🎉 All tests passed! API is working correctly.
-
+---------------------------------------------------------------------------------------
+còn lỗi: INFO:     127.0.0.1:44718 - "GET /api/admin/stats HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:33214 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40816 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40826 - "POST /api/auth/register HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40838 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40854 - "POST /api/payments/process HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40868 - "GET /api/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60330 - "POST /api/payments/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60336 - "GET /api/crypto/ibe/public-params HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60340 - "GET /api/crypto/keys/merchant-public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60352 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60354 - "GET /api/admin/stats HTTP/1.1" 403 Forbidden
+mặc dù test thành công
 ---
 
 **Note**: Đây là implementation demo cho mục đích học tập. Trong production, cần thêm nhiều security measures và optimizations.
