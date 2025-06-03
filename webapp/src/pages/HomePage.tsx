@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useCart } from '../contexts/CartContext';
 import ProductCard from '../components/ProductCard';
 import Hero from '../components/Hero';
@@ -65,7 +64,7 @@ const MOCK_PRODUCTS = [
 const CATEGORIES = ['All', 'Electronics', 'Security', 'Networking', 'Storage'];
 
 export default function HomePage() {
-    const [products, setProducts] = useState(MOCK_PRODUCTS);
+    const [products] = useState(MOCK_PRODUCTS);
     const [filteredProducts, setFilteredProducts] = useState(MOCK_PRODUCTS);
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [searchTerm, setSearchTerm] = useState('');

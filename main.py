@@ -62,8 +62,22 @@ class LoginRequest(BaseModel):
     password: str
 
 
+# class PaymentRequest(BaseModel):
+#     amount: Decimal = Field(gt=0, le=10000)
+#     currency: str = Field(default="USD", pattern="^(USD|EUR|GBP|VND)$")
+#     payment_method: str = Field(pattern="^(credit_card|debit_card|cryptocurrency|bank_transfer)$")
+#     card_data: Optional[Dict[str, str]] = None
+#     billing_address: Optional[Dict[str, str]] = None
+#     items: Optional[List[Dict[str, Any]]] = None
+    
+#     @field_validator('amount')
+#     @classmethod
+#     def validate_amount(cls, v):
+#         if v <= 0:
+#             raise ValueError('Amount must be positive')
+#         return v
 class PaymentRequest(BaseModel):
-    amount: Decimal = Field(gt=0, le=10000)
+    amount: Decimal = Field(gt=0, le=100000)  # Tăng limit lên 100k
     currency: str = Field(default="USD", pattern="^(USD|EUR|GBP|VND)$")
     payment_method: str = Field(pattern="^(credit_card|debit_card|cryptocurrency|bank_transfer)$")
     card_data: Optional[Dict[str, str]] = None
@@ -75,8 +89,8 @@ class PaymentRequest(BaseModel):
     def validate_amount(cls, v):
         if v <= 0:
             raise ValueError('Amount must be positive')
-        return v
-
+        # Convert to Decimal if needed
+        return Decimal(str(v))
 
 class TransactionVerifyRequest(BaseModel):
     transaction_id: str
@@ -315,6 +329,43 @@ async def login(request: LoginRequest, req: Request):
             detail=str(e)
         )
 
+# @app.post("/api/payments/process", response_model=PaymentResponse)
+# async def process_payment(
+#     request: PaymentRequest,
+#     current_user: dict = Depends(verify_token)
+# ):
+#     """Process a secure payment"""
+#     try:
+#         # Convert API request to service request
+#         service_request = ServicePaymentRequest(
+#             customer_id=current_user["sub"],
+#             merchant_id="MERCH001",  # In production, from merchant context
+#             amount=request.amount,
+#             currency=request.currency,
+#             payment_method=PaymentMethod(request.payment_method),
+#             card_data=request.card_data,
+#             billing_address=request.billing_address,
+#             items=request.items
+#         )
+        
+#         # Process payment
+#         result = await payment_processor.process_payment(service_request)
+        
+#         return PaymentResponse(
+#             payment_id=result.payment_id,
+#             status=result.status.value,
+#             transaction_id=result.transaction_id,
+#             signature=result.signature,
+#             timestamp=result.timestamp,
+#             message=result.message or "Payment processed",
+#             receipt_available=result.encrypted_receipt is not None
+#         )
+        
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail=f"Payment processing failed: {str(e)}"
+#         )
 @app.post("/api/payments/process", response_model=PaymentResponse)
 async def process_payment(
     request: PaymentRequest,
@@ -322,20 +373,43 @@ async def process_payment(
 ):
     """Process a secure payment"""
     try:
+        # Log request để debug
+        print(f"Payment request: amount={request.amount}, method={request.payment_method}")
+        
         # Convert API request to service request
         service_request = ServicePaymentRequest(
             customer_id=current_user["sub"],
-            merchant_id="MERCH001",  # In production, from merchant context
-            amount=request.amount,
+            merchant_id="MERCH001",
+            amount=float(request.amount),  # Convert to float for service
             currency=request.currency,
             payment_method=PaymentMethod(request.payment_method),
             card_data=request.card_data,
             billing_address=request.billing_address,
-            items=request.items
+            items=request.items or []
         )
         
         # Process payment
         result = await payment_processor.process_payment(service_request)
+        
+        # Save to database
+        db = SessionLocal()
+        try:
+            transaction = Transaction(
+                transaction_id=result.transaction_id,
+                payment_id=result.payment_id,
+                customer_id=current_user["sub"],
+                merchant_id="MERCH001",
+                amount=request.amount,
+                currency=request.currency,
+                payment_method=request.payment_method,
+                status=result.status.value,
+                signature=result.signature,
+                created_at=datetime.utcnow()
+            )
+            db.add(transaction)
+            db.commit()
+        finally:
+            db.close()
         
         return PaymentResponse(
             payment_id=result.payment_id,
@@ -343,11 +417,12 @@ async def process_payment(
             transaction_id=result.transaction_id,
             signature=result.signature,
             timestamp=result.timestamp,
-            message=result.message or "Payment processed",
+            message=result.message or "Payment processed successfully",
             receipt_available=result.encrypted_receipt is not None
         )
         
     except Exception as e:
+        print(f"Payment error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Payment processing failed: {str(e)}"
@@ -438,6 +513,29 @@ async def refund_payment(
         )
 
 
+# @app.get("/api/transactions")
+# async def list_transactions(
+#     current_user: dict = Depends(verify_token),
+#     limit: int = 10,
+#     offset: int = 0
+# ):
+#     """List user's transactions"""
+#     # In production, fetch from database with pagination
+#     return {
+#         "transactions": [
+#             {
+#                 "transaction_id": f"TXN00{i}",
+#                 "amount": 50.00 + i * 10,
+#                 "currency": "USD",
+#                 "status": "completed",
+#                 "timestamp": (datetime.utcnow() - timedelta(days=i)).isoformat()
+#             }
+#             for i in range(min(limit, 5))
+#         ],
+#         "total": 5,
+#         "limit": limit,
+#         "offset": offset
+#     }
 @app.get("/api/transactions")
 async def list_transactions(
     current_user: dict = Depends(verify_token),
@@ -445,22 +543,53 @@ async def list_transactions(
     offset: int = 0
 ):
     """List user's transactions"""
-    # In production, fetch from database with pagination
-    return {
-        "transactions": [
-            {
-                "transaction_id": f"TXN00{i}",
-                "amount": 50.00 + i * 10,
-                "currency": "USD",
-                "status": "completed",
-                "timestamp": (datetime.utcnow() - timedelta(days=i)).isoformat()
+    db = SessionLocal()
+    try:
+        # Lấy transactions thực từ database
+        transactions = db.query(Transaction).filter(
+            Transaction.customer_id == current_user["sub"]
+        ).order_by(
+            Transaction.created_at.desc()
+        ).offset(offset).limit(limit).all()
+        
+        # Nếu không có transactions, trả về mock data
+        if not transactions:
+            return {
+                "transactions": [
+                    {
+                        "transaction_id": f"TXN-DEMO-{i:03d}",
+                        "amount": 50.00 + i * 10,
+                        "currency": "USD",
+                        "status": "completed",
+                        "timestamp": (datetime.utcnow() - timedelta(days=i)).isoformat()
+                    }
+                    for i in range(min(limit, 3))
+                ],
+                "total": 3,
+                "limit": limit,
+                "offset": offset
             }
-            for i in range(min(limit, 5))
-        ],
-        "total": 5,
-        "limit": limit,
-        "offset": offset
-    }
+        
+        # Format real transactions
+        return {
+            "transactions": [
+                {
+                    "transaction_id": tx.transaction_id,
+                    "amount": float(tx.amount),
+                    "currency": tx.currency,
+                    "status": tx.status,
+                    "timestamp": tx.created_at.isoformat()
+                }
+                for tx in transactions
+            ],
+            "total": db.query(Transaction).filter(
+                Transaction.customer_id == current_user["sub"]
+            ).count(),
+            "limit": limit,
+            "offset": offset
+        }
+    finally:
+        db.close()
 
 # Admin endpoints 
 @app.get("/api/admin/transactions")

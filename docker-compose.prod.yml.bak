@@ -45,8 +45,6 @@ services:
       - redis
     networks:
       - qsc_network
-    ports:
-      - "8000:8000"
     restart: always
 
   # Nginx
@@ -56,7 +54,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.prod.conf:ro
       - ./webapp/dist:/usr/share/nginx/html:ro
     depends_on:
       - api
@@ -71,3 +69,6 @@ volumes:
 networks:
   qsc_network:
     driver: bridge
+
+# Thêm vào phần environment của api service:
+      - DATABASE_URL=postgresql://qsc_user:secure_password@postgres:5432/quantum_commerce

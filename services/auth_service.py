@@ -14,7 +14,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://qsc_user:secure_password@localhost:5432/quantum_commerce"
+    "postgresql://qsc_user:secure_password@postgres:5432/quantum_commerce"
 )
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

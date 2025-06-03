@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,6 +33,14 @@ export default function OrderSuccessPage() {
             fetchOrder();
         }
     }, [orderId, token]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-900 py-12 flex items-center justify-center">
+                <div className="text-white">Loading order details...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-900 py-12">

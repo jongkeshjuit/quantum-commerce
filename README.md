@@ -576,3 +576,5 @@ Fix bugs nếu có
 Deploy staging - Test trên server thật
 Security audit - Kiểm tra bảo mật
 Go live! 🚀
+
+tree -I 'venv|node_modules|build|dist|*.log|*.env' > tree.txt

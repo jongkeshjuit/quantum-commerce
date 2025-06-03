@@ -1,0 +1,123 @@
+.
+├── README.md
+├── __pycache__
+│   └── main.cpython-312.pyc
+├── api
+│   └── __init__.py
+├── config
+│   ├── __init__.py
+│   └── logging.py
+├── crypto
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-312.pyc
+│   │   ├── dilithium_signer.cpython-312.pyc
+│   │   └── ibe_system.cpython-312.pyc
+│   ├── dilithium_signer.py
+│   ├── dilithium_signer_old.py
+│   ├── ibe_system.py
+│   └── mock_implementations.py
+├── database
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-312.pyc
+│   │   └── schema.cpython-312.pyc
+│   ├── migrations
+│   └── schema.py
+├── deploy.sh
+├── docker-compose-dev.yml
+├── docker-compose.monitoring.yml
+├── docker-compose.prod.yml
+├── docker-compose.yml
+├── fix_issues.sh
+├── keys
+│   ├── dilithium
+│   └── ibe
+├── logs
+├── main.py
+├── main.py.backup
+├── models
+│   └── __init__.py
+├── monitoring
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-312.pyc
+│   │   └── metrics.cpython-312.pyc
+│   ├── grafana
+│   │   ├── dashboards
+│   │   │   └── quantum-commerce.json
+│   │   └── provisioning
+│   │       ├── dashboards
+│   │       │   └── dashboard.yml
+│   │       └── datasources
+│   │           └── prometheus.yml
+│   ├── metrics.py
+│   └── prometheus
+│       ├── alerts.yml
+│       └── prometheus.yml
+├── nginx
+│   └── ssl
+├── requirements.txt
+├── requirements_missing.txt
+├── scripts
+│   ├── create_db.py
+│   ├── create_tables.py
+│   ├── init_crypto.py
+│   ├── recreate_tables.py
+│   └── setup.sh
+├── services
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-312.pyc
+│   │   ├── auth_service.cpython-312.pyc
+│   │   └── payment_service.cpython-312.pyc
+│   ├── auth_old
+│   │   └── auth_service.py
+│   ├── auth_service.py
+│   └── payment_service.py
+├── test_api.sh
+├── tests
+│   └── test_api_full.py
+├── tree.txt
+└── webapp
+    ├── README.md
+    ├── eslint.config.js
+    ├── index.html
+    ├── package-lock.json
+    ├── package.json
+    ├── postcss.config.js
+    ├── public
+    │   └── vite.svg
+    ├── src
+    │   ├── App.css
+    │   ├── App.tsx
+    │   ├── assets
+    │   │   └── react.svg
+    │   ├── components
+    │   │   ├── Hero.tsx
+    │   │   ├── Layout.tsx
+    │   │   ├── PrivateRoute.tsx
+    │   │   └── ProductCard.tsx
+    │   ├── contexts
+    │   │   ├── AuthContext.tsx
+    │   │   └── CartContext.tsx
+    │   ├── index.css
+    │   ├── main.tsx
+    │   ├── pages
+    │   │   ├── AdminDashboard.tsx
+    │   │   ├── CartPage.tsx
+    │   │   ├── CheckoutPage.tsx
+    │   │   ├── HomePage.tsx
+    │   │   ├── LoginPage.tsx
+    │   │   ├── OrderHistoryPage.tsx
+    │   │   ├── OrderSuccessPage.tsx
+    │   │   ├── ProductDetailPage.tsx
+    │   │   └── RegisterPage.tsx
+    │   └── vite-env.d.ts
+    ├── tailwind.config.js
+    ├── tsconfig.app.json
+    ├── tsconfig.json
+    ├── tsconfig.node.json
+    └── vite.config.ts
+
+36 directories, 85 files

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 
@@ -42,7 +42,82 @@ const MOCK_PRODUCTS = [
             'Certifications': 'CC EAL5+'
         }
     },
-    // Add other products...
+    {
+        id: '3',
+        name: 'Secure Smartphone',
+        description: 'Smartphone với IBE encryption cho messages',
+        longDescription: 'Revolutionary smartphone featuring Identity-Based Encryption for all communications. Your messages, calls, and data are protected by quantum-resistant cryptography.',
+        price: 899.99,
+        image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500',
+        category: 'Electronics',
+        features: ['IBE Messaging', 'Secure Enclave', '5G', '128GB Storage', 'Quantum-Safe OS'],
+        inStock: true,
+        specs: {
+            'Display': '6.7" AMOLED 120Hz',
+            'Processor': 'Snapdragon 8 Gen 2',
+            'Memory': '8GB RAM',
+            'Storage': '128GB',
+            'Camera': '50MP Triple Camera',
+            'Security': 'IBE + Secure Enclave'
+        }
+    },
+    {
+        id: '4',
+        name: 'Privacy VPN Router',
+        description: 'Router với post-quantum VPN protocols',
+        longDescription: 'Advanced router supporting post-quantum VPN protocols. Secure your entire network against current and future threats with quantum-resistant encryption.',
+        price: 349.99,
+        image: 'https://images.unsplash.com/photo-1606904825846-647eb07f5be2?w=500',
+        category: 'Networking',
+        features: ['Quantum-Safe VPN', 'WiFi 6E', 'Open Source', '10Gbps Ports', 'WireGuard Support'],
+        inStock: true,
+        specs: {
+            'WiFi': '802.11ax (WiFi 6E)',
+            'Ports': '4x 10Gbps Ethernet',
+            'VPN': 'Post-Quantum WireGuard',
+            'Processor': 'Quad-Core ARM',
+            'Memory': '2GB DDR4',
+            'Firmware': 'OpenWRT Based'
+        }
+    },
+    {
+        id: '5',
+        name: 'Encrypted USB Drive',
+        description: 'USB drive với hardware encryption',
+        longDescription: 'Military-grade encrypted USB drive with hardware-based encryption. Features biometric authentication and quantum-resistant algorithms.',
+        price: 89.99,
+        image: 'https://images.unsplash.com/photo-1618478047375-2700c2f03456?w=500',
+        category: 'Storage',
+        features: ['256-bit AES', 'Biometric Lock', '1TB Storage', 'USB 3.2', 'IP67 Waterproof'],
+        inStock: true,
+        specs: {
+            'Capacity': '1TB',
+            'Interface': 'USB 3.2 Gen 2',
+            'Encryption': 'AES-256 + Quantum Layer',
+            'Authentication': 'Fingerprint + PIN',
+            'Speed': 'Read: 1000MB/s, Write: 900MB/s',
+            'Durability': 'IP67, MIL-STD-810G'
+        }
+    },
+    {
+        id: '6',
+        name: 'Security Camera System',
+        description: 'AI-powered camera với encrypted storage',
+        longDescription: 'Complete security camera system with AI-powered detection and quantum-encrypted cloud storage. Monitor your property with unbreakable security.',
+        price: 599.99,
+        image: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=500',
+        category: 'Security',
+        features: ['4K Resolution', 'Night Vision', 'Cloud Backup', 'AI Detection', 'Quantum Encryption'],
+        inStock: true,
+        specs: {
+            'Resolution': '4K Ultra HD (3840x2160)',
+            'Night Vision': 'Up to 100ft',
+            'Storage': 'Local + Encrypted Cloud',
+            'AI Features': 'Person/Vehicle Detection',
+            'Connectivity': 'WiFi 6 + Ethernet',
+            'Weather Rating': 'IP66'
+        }
+    }
 ];
 
 export default function ProductDetailPage() {
