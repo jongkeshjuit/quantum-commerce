@@ -8,7 +8,7 @@ import base64
 from typing import Tuple, Dict, Optional
 from datetime import datetime
 import oqs  # from liboqs-python
-from config.security import SecurityConfig
+from config.dev_config import SecurityConfig
 import logging
 
 logger = logging.getLogger(__name__)

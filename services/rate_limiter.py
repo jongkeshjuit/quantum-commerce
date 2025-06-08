@@ -5,7 +5,7 @@ Rate limiting service using Redis
 import redis
 from datetime import datetime, timedelta
 from typing import Tuple
-from config.security import SecurityConfig
+from config.dev_config import SecurityConfig
 import logging
 from typing import Dict, List, Optional, Any
 
@@ -18,7 +18,7 @@ class RateLimiter:
         try:
             # Thử kết nối Redis với cấu hình đơn giản hơn cho testing
             self.redis_client = redis.from_url(
-                SecurityConfig.REDIS_URL,
+                SecurityConfig.get_redis_url(),
                 decode_responses=True,
                 socket_connect_timeout=5,
                 socket_timeout=5,

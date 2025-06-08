@@ -1,6 +1,5 @@
 .
 ├── Dockerfile
-├── Dockerfile.prod
 ├── README.md
 ├── __pycache__
 │   ├── api_with_metrics.cpython-312.pyc
@@ -10,7 +9,22 @@
 │   └── main_with_metrics.cpython-312.pyc
 ├── api
 │   └── __init__.py
-├── api_with_metrics.py
+├── bin
+│   ├── Dockerfile.prod
+│   ├── debug_monitoring.sh
+│   ├── docker-compose-dev.yml
+│   ├── docker-compose-simple.yml
+│   ├── docker-compose.simple.yml
+│   ├── docker-compose.yml.backup
+│   ├── emergency_fix.sh
+│   ├── final_success_test.sh
+│   ├── final_test.sh
+│   ├── fix_monitoring.sh
+│   ├── fix_project.sh
+│   ├── main_enhanced.py
+│   ├── main_with_metrics.py
+│   ├── manual_fix.sh
+│   └── quick_setup_fixed.sh
 ├── config
 │   ├── __init__.py
 │   ├── __pycache__
@@ -63,29 +77,16 @@
 │   ├── migrations
 │   ├── models.py
 │   └── schema.py
-├── debug_monitoring.sh
-├── docker-compose-dev.yml
-├── docker-compose-simple.yml
 ├── docker-compose.monitoring-fixed.yml
 ├── docker-compose.monitoring.yml
 ├── docker-compose.production.yml
-├── docker-compose.simple.yml
 ├── docker-compose.yml
-├── docker-compose.yml.backup
-├── emergency_fix.sh
-├── final_success_test.sh
-├── final_test.sh
-├── fix_monitoring.sh
-├── fix_project.sh
 ├── keys
 │   ├── dilithium
 │   └── ibe
 │       └── master_key.pem
 ├── logs
 ├── main.py
-├── main_enhanced.py
-├── main_with_metrics.py
-├── manual_fix.sh
 ├── metrics
 │   ├── __pycache__
 │   │   └── quantum_metrics.cpython-312.pyc
@@ -119,8 +120,11 @@
 │   ├── nginx.conf
 │   ├── nginx.prod.conf
 │   └── ssl
-├── quick_setup_fixed.sh
+├── requirements.txt
+├── requirements_crypto.txt
+├── requirements_missing.txt
 ├── scripts
+│   ├── api_with_metrics.py
 │   ├── create_db.py
 │   ├── create_tables.py
 │   ├── init_crypto.py
@@ -131,10 +135,7 @@
 │   ├── setup_prodution_secrets.py
 │   ├── setup_secrets.py
 │   ├── setup_secrets.sh
-│   ├── setup_vault.sh
-│   ├── test_crypto.py
-│   ├── test_real_crypto.py
-│   └── test_vault_connection.py
+│   └── setup_vault.sh
 ├── secrets
 │   ├── encrypted_secrets.json
 │   └── salt.dat
@@ -165,15 +166,21 @@
 │   │   └── index-SQx0ldFy.css
 │   ├── index.html
 │   └── vite.svg
-├── test_api_metrics.py
-├── test_api_simple.py
-├── test_quantum_api.py
-├── test_simple.py
+├── test_config.py
+├── test_final.py
 ├── tests
 │   ├── test_api_full.py
-│   └── test_security.py
+│   ├── test_api_metrics.py
+│   ├── test_api_simple.py
+│   ├── test_crypto.py
+│   ├── test_quantum_api.py
+│   ├── test_real_crypto.py
+│   ├── test_security.py
+│   ├── test_simple.py
+│   └── test_vault_connection.py
 ├── tree.txt
 └── webapp
+    ├── Dockerfile
     ├── README.md
     ├── eslint.config.js
     ├── index.html
@@ -219,4 +226,4 @@
     ├── tsconfig.node.json
     └── vite.config.ts
 
-46 directories, 174 files
+47 directories, 180 files

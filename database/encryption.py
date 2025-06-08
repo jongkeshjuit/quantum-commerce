@@ -4,7 +4,7 @@ Database field encryption using Fernet
 """
 from sqlalchemy.types import TypeDecorator, String, Text
 from cryptography.fernet import Fernet
-from config.security import SecurityConfig
+from config.dev_config import SecurityConfig
 import json
 import logging
 
@@ -17,7 +17,7 @@ class EncryptedType(TypeDecorator):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fernet = Fernet(SecurityConfig.get_fernet_key())
+        self.fernet = Fernet(SecurityConfig.get_fernet_key()())
     
     def process_bind_param(self, value, dialect):
         """Encrypt value before storing"""

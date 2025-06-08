@@ -16,7 +16,7 @@ except ImportError:
     LIBOQS_AVAILABLE = False
     print("⚠️ liboqs not available, using fallback implementation")
 
-from config.security import SecurityConfig
+from config.dev_config import SecurityConfig
 
 class RealDilithiumSigner:
     """Real Dilithium digital signatures"""

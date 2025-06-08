@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
-from config.security import SecurityConfig
+from config.dev_config import SecurityConfig
 import logging
 
 logger = logging.getLogger(__name__)

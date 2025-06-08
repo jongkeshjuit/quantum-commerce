@@ -7,7 +7,7 @@ import psutil
 import redis
 from typing import Dict, Any
 from database import get_db, engine
-from config.security import SecurityConfig
+from config.dev_config import SecurityConfig
 from monitoring.metrics import system_health
 import logging
 

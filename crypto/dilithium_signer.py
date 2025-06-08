@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Dict, Any, Tuple
 from dataclasses import dataclass
 from enum import Enum
-from config.security import SecurityConfig
+from config.dev_config import SecurityConfig
 
 class SecurityLevel(Enum):
     LEVEL2 = "Dilithium2"

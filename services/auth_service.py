@@ -13,7 +13,7 @@ class AuthService:
     
     def __init__(self):
         try:
-            from config.security import SecurityConfig
+            from config.dev_config import SecurityConfig
             self.jwt_secret = SecurityConfig.get_jwt_secret()
             self.jwt_algorithm = SecurityConfig.JWT_ALGORITHM
             self.jwt_expiration_hours = SecurityConfig.JWT_EXPIRATION_HOURS

@@ -4,7 +4,7 @@ import uuid
 import base64
 from datetime import datetime
 from typing import Dict, Any, Tuple
-from config.security import SecurityConfig
+from config.dev_config import SecurityConfig
 
 class IBESystem:
     def __init__(self):

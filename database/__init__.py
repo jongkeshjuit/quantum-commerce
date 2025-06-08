@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool, NullPool
 from config.database import DatabaseConfig
-from config.security import SecurityConfig
+from config.dev_config import SecurityConfig
 
 logger = logging.getLogger(__name__)
 

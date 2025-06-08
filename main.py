@@ -19,7 +19,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 # Import configurations FIRST
-from config.secure_config import config, SecurityConfig
+from config.dev_config import config, SecurityConfig
 # Validate secrets trước khi khởi động
 try:
     SecurityConfig.validate()
