@@ -1,23 +1,25 @@
-# Ignore env
-*.evn
-
-# Local Netlify folder
-.netlify
-# .gitignore
-# Environment files
-.env
-.env.local
-.env.*.local
-
-# Keys - NEVER commit these
-keys/
-*.pem
-*.key
-*.cert
-
-# Secrets
+# SECURITY - NEVER COMMIT THESE!
 secrets/
-vault-keys.json
+.env*
+*.key
+*.pem
+master_password.txt
+vault_token.txt
+env.txt
+
+# Crypto keys
+keys/dilithium/*.key
+keys/ibe/*.key
+keys/*.pem
+
+# Logs có thể chứa sensitive data
+logs/*.log
+logs/security.log
+
+# Database
+*.sql
+*.db
+data/
 
 # Python
 __pycache__/
@@ -27,14 +29,15 @@ __pycache__/
 .Python
 env/
 venv/
+ENV/
 
-# Logs
-logs/
-*.log
+# Docker
+.dockerignore
 
-# Database
-*.db
-*.sqlite3
+# Backup files
+*.backup
+*.bak
+temp/
 
 # IDE
 .vscode/
@@ -46,4 +49,69 @@ logs/
 .DS_Store
 Thumbs.db
 
-/pbc-0.5.14.tar.gz
+# Monitoring data
+prometheus_data/
+grafana_data/
+
+# SECURITY - NEVER COMMIT THESE!
+secrets/
+.env
+.env.local
+.env.production
+.env.development
+*.key
+*.pem
+master_password.txt
+vault_token.txt
+
+# Crypto keys
+keys/dilithium/
+keys/ibe/
+keys/*.key
+
+# Logs có thể chứa sensitive data
+logs/*.log
+logs/security.log
+
+# Database dumps
+*.sql
+*.db
+
+# Backup files
+*.backup
+*.bak
+temp/
+
+# SECURITY - NEVER COMMIT THESE!
+secrets/
+.env
+.env.local
+.env.production
+.env.development
+*.key
+*.pem
+master_password.txt
+vault_token.txt
+
+# Crypto keys
+keys/dilithium/
+keys/ibe/
+keys/*.key
+
+# Logs có thể chứa sensitive data
+logs/*.log
+logs/security.log
+
+# Database dumps
+*.sql
+*.db
+
+# Backup files
+*.backup
+*.bak
+temp/
+
+#Setup Secrets 
+scripts/setup_prodution_secrets.py
+scripts/setup_prodution_secrets.py
+

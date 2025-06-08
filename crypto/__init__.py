@@ -1,28 +1,32 @@
 """
-Crypto module initialization
-Automatically selects real or mock implementation based on environment
+Quantum-Secure Crypto Module
+Real Dilithium + Enhanced IBE
 """
-import os
-from config.security import SecurityConfig
+from .production_crypto import (
+    QuantumSecureSigner,
+    EnhancedIBESystem,
+    create_production_crypto,
+    get_crypto_status
+)
 
-# Check if we should use real implementations
-USE_REAL_CRYPTO = os.getenv('USE_REAL_CRYPTO', 'true').lower() == 'true'
+# Backward compatibility
+from .production_crypto import QuantumSecureSigner as DilithiumSigner
+from .production_crypto import EnhancedIBESystem as IBESystem
 
-if USE_REAL_CRYPTO and SecurityConfig.APP_ENV != 'test':
-    try:
-        from .real_dilithium import RealDilithiumSigner as DilithiumSigner
-        from .real_ibe import RealIBESystem as IBESystem
-        print("Using REAL cryptographic implementations")
-    except ImportError as e:
-        print(f"Failed to import real crypto: {e}")
-        print("Falling back to mock implementations")
-        # Sửa tên class ở đây
-        from .mock_implementations import DilithiumSigner
-        from .mock_implementations import IBESystem
-else:
-    # Sửa tên class ở đây
-    from .mock_implementations import DilithiumSigner
-    from .mock_implementations import IBESystem
-    print("Using MOCK cryptographic implementations")
+__all__ = [
+    'QuantumSecureSigner',
+    'DilithiumSigner', 
+    'EnhancedIBESystem',
+    'IBESystem',
+    'create_production_crypto',
+    'get_crypto_status'
+]
 
-__all__ = ['DilithiumSigner', 'IBESystem']
+# Initialize global crypto instances
+crypto_instances = create_production_crypto()
+signer = crypto_instances['signer']
+ibe_system = crypto_instances['ibe']
+
+print("🛡️ Quantum-Secure Crypto Module Loaded")
+print(f"   Signer: {signer.variant}")
+print(f"   Quantum Secure: {getattr(signer, 'REAL_DILITHIUM', False)}")

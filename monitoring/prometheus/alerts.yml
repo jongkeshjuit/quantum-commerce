@@ -1,39 +1,22 @@
 groups:
   - name: quantum_commerce_alerts
-    interval: 30s
     rules:
-      - alert: HighPaymentFailureRate
-        expr: rate(payments_total{status="failed"}[5m]) > 0.1
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High payment failure rate detected"
-          description: "Payment failure rate is {{ $value }} failures per second"
-      
-      - alert: APIHighLatency
-        expr: histogram_quantile(0.95, rate(api_request_duration_seconds_bucket[5m])) > 1
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "API latency is high"
-          description: "95th percentile latency is {{ $value }} seconds"
-      
-      - alert: DatabaseConnectionsHigh
-        expr: db_connections_active > 90
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Database connections near limit"
-          description: "{{ $value }} active connections"
-      
-      - alert: SystemUnhealthy
-        expr: system_health_status == 0
+      # API availability
+      - alert: QuantumAPIDown
+        expr: up{job="quantum-commerce-api"} == 0
         for: 1m
         labels:
           severity: critical
         annotations:
-          summary: "System health check failed"
-          description: "System is reporting unhealthy status"
+          summary: "Quantum Commerce API is down"
+          description: "The quantum-secure API has been down for more than 1 minute"
+      
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors per second"

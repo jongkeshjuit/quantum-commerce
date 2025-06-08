@@ -3,33 +3,50 @@
 ├── Dockerfile.prod
 ├── README.md
 ├── __pycache__
-│   └── main.cpython-312.pyc
+│   ├── api_with_metrics.cpython-312.pyc
+│   ├── main.cpython-312.pyc
+│   ├── main.cpython-39.pyc
+│   ├── main_enhanced.cpython-312.pyc
+│   └── main_with_metrics.cpython-312.pyc
 ├── api
 │   └── __init__.py
-├── checklist.sh
+├── api_with_metrics.py
 ├── config
 │   ├── __init__.py
 │   ├── __pycache__
 │   │   ├── __init__.cpython-312.pyc
+│   │   ├── __init__.cpython-39.pyc
 │   │   ├── database.cpython-312.pyc
-│   │   ├── logging.cpython-312.pyc
-│   │   └── security.cpython-312.pyc
+│   │   ├── database.cpython-39.pyc
+│   │   ├── secure_config.cpython-312.pyc
+│   │   ├── secure_config.cpython-39.pyc
+│   │   ├── security.cpython-312.pyc
+│   │   └── security.cpython-39.pyc
 │   ├── database.py
 │   ├── logging.py
-│   └── security.py
+│   ├── secure_config.py
+│   ├── security.py
+│   └── vault_config.py
 ├── crypto
 │   ├── __init__.py
 │   ├── __pycache__
 │   │   ├── __init__.cpython-312.pyc
+│   │   ├── __init__.cpython-39.pyc
 │   │   ├── dilithium_signer.cpython-312.pyc
+│   │   ├── dilithium_signer.cpython-39.pyc
 │   │   ├── ibe_system.cpython-312.pyc
-│   │   ├── mock_implementations.cpython-312.pyc
-│   │   └── real_dilithium.cpython-312.pyc
+│   │   ├── ibe_system.cpython-39.pyc
+│   │   ├── production_crypto.cpython-312.pyc
+│   │   └── production_crypto.cpython-39.pyc
+│   ├── crypto_factory.py
 │   ├── dilithium_signer.py
-│   ├── dilithium_signer_old.py
+│   ├── hsm_integration.py
 │   ├── ibe_system.py
 │   ├── mock_implementations.py
+│   ├── production_crypto.py
+│   ├── real_crypto_available.py
 │   ├── real_dilithium.py
+│   ├── real_dilithium_liboqs.py
 │   └── real_ibe.py
 ├── data
 │   └── quantum_commerce.db
@@ -37,25 +54,42 @@
 │   ├── __init__.py
 │   ├── __pycache__
 │   │   ├── __init__.cpython-312.pyc
+│   │   ├── __init__.cpython-39.pyc
 │   │   ├── encryption.cpython-312.pyc
-│   │   └── schema.cpython-312.pyc
+│   │   ├── encryption.cpython-39.pyc
+│   │   ├── schema.cpython-312.pyc
+│   │   └── schema.cpython-39.pyc
 │   ├── encryption.py
 │   ├── migrations
+│   ├── models.py
 │   └── schema.py
-├── deploy.sh
+├── debug_monitoring.sh
 ├── docker-compose-dev.yml
+├── docker-compose-simple.yml
+├── docker-compose.monitoring-fixed.yml
 ├── docker-compose.monitoring.yml
-├── docker-compose.prod.yml
-├── docker-compose.prod.yml.backup
-├── docker-compose.prod.yml.bak
+├── docker-compose.production.yml
+├── docker-compose.simple.yml
 ├── docker-compose.yml
-├── fix_issues.sh
+├── docker-compose.yml.backup
+├── emergency_fix.sh
+├── final_success_test.sh
+├── final_test.sh
+├── fix_monitoring.sh
+├── fix_project.sh
 ├── keys
 │   ├── dilithium
 │   └── ibe
+│       └── master_key.pem
 ├── logs
 ├── main.py
-├── main.py.backup
+├── main_enhanced.py
+├── main_with_metrics.py
+├── manual_fix.sh
+├── metrics
+│   ├── __pycache__
+│   │   └── quantum_metrics.cpython-312.pyc
+│   └── quantum_metrics.py
 ├── middleware
 │   ├── __init__.py
 │   └── security.py
@@ -63,65 +97,79 @@
 │   └── __init__.py
 ├── monitoring
 │   ├── __init__.py
-│   ├── __pycache__
-│   │   ├── __init__.cpython-312.pyc
-│   │   └── metrics.cpython-312.pyc
 │   ├── grafana
 │   │   ├── dashboards
+│   │   │   ├── dashboard.yml
 │   │   │   └── quantum-commerce.json
+│   │   ├── datasources
+│   │   │   └── prometheus.yml
 │   │   └── provisioning
 │   │       ├── dashboards
-│   │       │   └── dashboard.yml
+│   │       │   ├── dashboard.yml
+│   │       │   └── quantum-dashboard.json
 │   │       └── datasources
 │   │           └── prometheus.yml
 │   ├── health_check.py
 │   ├── metrics.py
-│   └── prometheus
-│       ├── alerts.yml
-│       └── prometheus.yml
+│   ├── prometheus
+│   │   ├── alerts.yml
+│   │   └── prometheus.yml
+│   └── prometheus.yml
 ├── nginx
 │   ├── nginx.conf
 │   ├── nginx.prod.conf
 │   └── ssl
-├── pbc-0.5.14.tar.gz
-├── readme2.md
-├── render.yaml
-├── requirements.txt
-├── requirements_crypto.txt
-├── requirements_missing.txt
+├── quick_setup_fixed.sh
 ├── scripts
 │   ├── create_db.py
 │   ├── create_tables.py
 │   ├── init_crypto.py
+│   ├── key_rotation.py
 │   ├── recreate_tables.py
-│   └── setup.sh
+│   ├── setup.sh
+│   ├── setup_production_secrets.py
+│   ├── setup_prodution_secrets.py
+│   ├── setup_secrets.py
+│   ├── setup_secrets.sh
+│   ├── setup_vault.sh
+│   ├── test_crypto.py
+│   ├── test_real_crypto.py
+│   └── test_vault_connection.py
 ├── secrets
+│   ├── encrypted_secrets.json
+│   └── salt.dat
+├── security
+│   ├── incident_response.py
+│   └── security_middleware.py
 ├── services
 │   ├── __init__.py
 │   ├── __pycache__
 │   │   ├── __init__.cpython-312.pyc
+│   │   ├── __init__.cpython-39.pyc
 │   │   ├── auth_service.cpython-312.pyc
+│   │   ├── auth_service.cpython-39.pyc
 │   │   ├── payment_service.cpython-312.pyc
+│   │   ├── payment_service.cpython-39.pyc
 │   │   ├── rate_limiter.cpython-312.pyc
-│   │   └── session_service.cpython-312.pyc
-│   ├── auth_old
-│   │   └── auth_service.py
+│   │   ├── rate_limiter.cpython-39.pyc
+│   │   ├── session_service.cpython-312.pyc
+│   │   └── session_service.cpython-39.pyc
 │   ├── auth_service.py
 │   ├── payment_service.py
 │   ├── rate_limiter.py
+│   ├── secret_manager.py
 │   └── session_service.py
-├── setup_secure.sh
 ├── static
 │   ├── assets
 │   │   ├── index-24bAKmhN.js
 │   │   └── index-SQx0ldFy.css
 │   ├── index.html
 │   └── vite.svg
-├── test_api.sh
-├── test_secure_api.sh
+├── test_api_metrics.py
+├── test_api_simple.py
+├── test_quantum_api.py
+├── test_simple.py
 ├── tests
-│   ├── __pycache__
-│   │   └── test_security.cpython-312-pytest-7.4.2.pyc
 │   ├── test_api_full.py
 │   └── test_security.py
 ├── tree.txt
@@ -171,4 +219,4 @@
     ├── tsconfig.node.json
     └── vite.config.ts
 
-45 directories, 127 files
+46 directories, 174 files
