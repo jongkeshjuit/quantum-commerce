@@ -7,6 +7,7 @@ interface User {
     email: string;
     name: string;
     user_type: string;
+    is_admin?: boolean;
 }
 
 interface AuthContextType {
@@ -56,10 +57,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const { access_token, user_id, email: userEmail } = response.data;
 
             const userData = {
-                id: user_id,
+                id: response.data.user_id || response.data.id,
                 email: userEmail,
-                name: userEmail.split('@')[0],
-                user_type: response.data.user_type || 'customer'
+                name: response.data.username || response.data.full_name || userEmail.split('@')[0],
+                user_type: response.data.is_admin ? 'admin' : 'customer'
             };
 
             localStorage.setItem(SecurityConfig.TOKEN_KEY, access_token);
@@ -87,10 +88,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const { access_token, user_id, email: userEmail } = response.data;
 
             const userData = {
-                id: user_id,
+                id: response.data.user_id || response.data.id,
                 email: userEmail,
-                name: name,
-                user_type: 'customer'
+                name: response.data.username || name,
+                user_type: response.data.is_admin ? 'admin' : 'customer'
             };
 
             localStorage.setItem(SecurityConfig.TOKEN_KEY, access_token);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -18,6 +18,7 @@ export default function OrderHistoryPage() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedTransaction, setSelectedTransaction] = useState<string | null>(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchTransactions();
@@ -44,7 +45,7 @@ export default function OrderHistoryPage() {
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            if (response.data.is_valid) {
+            if (response.data.verified) {
                 alert('✅ Transaction signature verified successfully!');
             } else {
                 alert('❌ Transaction signature verification failed');
@@ -152,9 +153,7 @@ export default function OrderHistoryPage() {
                                                 Verify
                                             </button>
                                             <button
-                                                onClick={() => setSelectedTransaction(
-                                                    selectedTransaction === transaction.transaction_id ? null : transaction.transaction_id
-                                                )}
+                                                onClick={() => navigate(`/order-details/${transaction.transaction_id}`)}
                                                 className="text-gray-400 hover:text-white"
                                             >
                                                 Details

@@ -39,7 +39,7 @@ export default function Layout() {
                                 </Link>
                             )}
 
-                            {user?.user_type === 'admin' && (
+                            {(user?.user_type === 'admin' || user?.is_admin) && (
                                 <Link to="/admin" className="text-gray-300 hover:text-white transition-colors">
                                     Admin
                                 </Link>

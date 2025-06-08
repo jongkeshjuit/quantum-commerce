@@ -12,7 +12,7 @@ import OrderSuccessPage from './pages/OrderSuccessPage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
 import AdminDashboard from './pages/AdminDashboard';
 import PrivateRoute from './components/PrivateRoute';
-
+import OrderDetailsPage from './pages/OrderDetailsPage';
 function App() {
   return (
     <AuthProvider>
@@ -37,6 +37,7 @@ function App() {
               <Route element={<PrivateRoute requiredRole="admin" />}>
                 <Route path="admin/*" element={<AdminDashboard />} />
               </Route>
+              <Route path="/order-details/:transactionId" element={<OrderDetailsPage />} />
             </Route>
           </Routes>
         </Router>

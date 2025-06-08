@@ -47,24 +47,22 @@ export default function CheckoutPage() {
             const response = await axios.post(
                 `${API_URL}/api/payments/process`,
                 {
-                    amount: getCartTotal() * 1.08, // Including tax
+                    amount: getCartTotal() * 1.08,
                     currency: 'USD',
                     payment_method: 'credit_card',
-                    card_data: {
-                        number: formData.cardNumber.replace(/\s/g, ''),
+                    payment_data: {
+                        card_number: formData.cardNumber.replace(/\s/g, ''),
                         exp_month: formData.expMonth,
                         exp_year: formData.expYear,
-                        cvv: formData.cvv
-                    },
-                    billing_address: {
-                        name: formData.billingName,
-                        street: formData.billingAddress,
-                        city: formData.billingCity,
-                        state: formData.billingState,
-                        zip: formData.billingZip
+                        cvv: formData.cvv,
+                        // Đưa billing vào payment_data:
+                        billing_name: formData.billingName,
+                        billing_address: formData.billingAddress,
+                        billing_city: formData.billingCity,
+                        billing_state: formData.billingState,
+                        billing_zip: formData.billingZip
                     },
                     items: cart.map(item => ({
-                        id: item.id,
                         name: item.name,
                         price: item.price,
                         quantity: item.quantity
@@ -83,9 +81,10 @@ export default function CheckoutPage() {
 
                 // Clear cart and redirect after 3 seconds
                 clearCart();
-                setTimeout(() => {
-                    navigate(`/order-success/${response.data.transaction_id}`);
-                }, 3000);
+                // setTimeout(() => {
+                //     navigate(`/order-success/${response.data.transaction_id}`);
+                // }, 3000);
+                navigate(`/order-success/${response.data.transaction_id}`);
             }
         } catch (error: any) {
             setPaymentStatus({
