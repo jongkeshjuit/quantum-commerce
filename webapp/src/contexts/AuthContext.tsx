@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import api from '../services/api';
+import { SecurityConfig } from '../config/security';
 
 interface User {
     id: string;
@@ -31,15 +30,15 @@ export function useAuth() {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+    const [token, setToken] = useState<string | null>(localStorage.getItem(SecurityConfig.TOKEN_KEY));
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (token) {
             // Verify token and get user info
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             // In production, make API call to get user info
-            const savedUser = localStorage.getItem('user');
+            const savedUser = localStorage.getItem(SecurityConfig.USER_KEY);
             if (savedUser) {
                 setUser(JSON.parse(savedUser));
             }
@@ -49,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const login = async (email: string, password: string) => {
         try {
-            const response = await axios.post(`${API_URL}/api/auth/login`, {
+            const response = await api.post('/api/auth/login', {
                 email,
                 password
             });
@@ -63,13 +62,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 user_type: response.data.user_type || 'customer'
             };
 
-            localStorage.setItem('token', access_token);
-            localStorage.setItem('user', JSON.stringify(userData));
+            localStorage.setItem(SecurityConfig.TOKEN_KEY, access_token);
+            localStorage.setItem(SecurityConfig.USER_KEY, JSON.stringify(userData));
 
             setToken(access_token);
             setUser(userData);
 
-            axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+            api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
         } catch (error) {
             throw error;
         }
@@ -77,10 +76,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const register = async (email: string, name: string, password: string) => {
         try {
-            const response = await axios.post(`${API_URL}/api/auth/register`, {
+            const response = await api.post('/api/auth/register', {
                 email,
-                name,
+                username: name,
                 password,
+                full_name: name,
                 user_type: 'customer'
             });
 
@@ -93,22 +93,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 user_type: 'customer'
             };
 
-            localStorage.setItem('token', access_token);
-            localStorage.setItem('user', JSON.stringify(userData));
+            localStorage.setItem(SecurityConfig.TOKEN_KEY, access_token);
+            localStorage.setItem(SecurityConfig.USER_KEY, JSON.stringify(userData));
 
             setToken(access_token);
             setUser(userData);
 
-            axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+            api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
         } catch (error) {
             throw error;
         }
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        delete axios.defaults.headers.common['Authorization'];
+        localStorage.removeItem(SecurityConfig.TOKEN_KEY);
+        localStorage.removeItem(SecurityConfig.USER_KEY);
+        delete api.defaults.headers.common['Authorization'];
         setToken(null);
         setUser(null);
     };

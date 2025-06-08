@@ -1,73 +1,101 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: qsc_postgres_prod
+    container_name: qc_postgres_prod
     environment:
-      POSTGRES_DB: quantum_commerce
-      POSTGRES_USER: qsc_user
-      POSTGRES_PASSWORD: secure_password
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - qsc_network
+      - quantum_network
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
-  # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: qsc_redis_prod
-    command: redis-server --requirepass redis_secure_pass
+    container_name: qc_redis_prod
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
     volumes:
       - redis_data:/data
     networks:
-      - qsc_network
+      - quantum_network
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
-  # API Backend
   api:
-    build: .
-    container_name: qsc_api_prod
-    environment:
-      - DATABASE_URL=postgresql://qsc_user:secure_password@postgres:5432/quantum_commerce
-      - REDIS_URL=redis://default:redis_secure_pass@redis:6379/0
-      - SECRET_KEY=your-secret-key-here
-      - JWT_SECRET_KEY=jwt-secret-key
-      - IBE_MASTER_PASSWORD=secure_master_password
-      - ENVIRONMENT=production
-    volumes:
-      - ./keys:/app/keys
-      - ./logs:/app/logs
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: qc_api_prod
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env.prod
+    volumes:
+      - ./keys:/app/keys:ro
+      - ./logs:/app/logs
     networks:
-      - qsc_network
-    ports:
-      - "8000:8000"
+      - quantum_network
     restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Nginx
   nginx:
     image: nginx:alpine
-    container_name: qsc_nginx_prod
+    container_name: qc_nginx_prod
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
       - ./webapp/dist:/usr/share/nginx/html:ro
     depends_on:
       - api
     networks:
-      - qsc_network
+      - quantum_network
+    restart: always
+
+  vault:
+    image: vault:latest
+    container_name: qc_vault_prod
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_ADDR: 'http://0.0.0.0:8200'
+    volumes:
+      - vault_data:/vault/data
+      - ./vault/config:/vault/config
+    command: server
+    ports:
+      - "8200:8200"
+    networks:
+      - quantum_network
     restart: always
 
 volumes:
   postgres_data:
   redis_data:
+  vault_data:
 
 networks:
-  qsc_network:
+  quantum_network:
     driver: bridge

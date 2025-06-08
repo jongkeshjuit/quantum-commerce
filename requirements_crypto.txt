@@ -1,0 +1,19 @@
+# requirements_crypto.txt
+# Add these to your requirements.txt
+
+# Post-Quantum Cryptography
+pqcrypto==0.1.0  # For Dilithium
+#liboqs-python==0.7.2  # Alternative for quantum-safe algorithms
+
+# Traditional Cryptography  
+cryptography==41.0.7
+pycryptodome==3.19.0
+PyNaCl==1.5.0
+
+# For IBE (Identity-Based Encryption)
+#charm-crypto  # May need manual installation
+#pypbc # Pairing-based crypto
+
+# Key Management
+python-jose[cryptography]==3.3.0
+jwcrypto==1.5.0

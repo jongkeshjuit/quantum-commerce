@@ -5,7 +5,7 @@ import os
 from sqlalchemy import create_engine, text
 
 # Database URL
-db_url = "postgresql://qsc_user:secure_password@localhost:5432/postgres"
+db_url = "postgresql://quantum_user:quantum_pass@localhost:5432/postgres"
 
 # Create engine
 engine = create_engine(db_url)

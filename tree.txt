@@ -1,28 +1,45 @@
 .
 ├── Dockerfile
+├── Dockerfile.prod
 ├── README.md
 ├── __pycache__
 │   └── main.cpython-312.pyc
 ├── api
 │   └── __init__.py
+├── checklist.sh
 ├── config
 │   ├── __init__.py
-│   └── logging.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-312.pyc
+│   │   ├── database.cpython-312.pyc
+│   │   ├── logging.cpython-312.pyc
+│   │   └── security.cpython-312.pyc
+│   ├── database.py
+│   ├── logging.py
+│   └── security.py
 ├── crypto
 │   ├── __init__.py
 │   ├── __pycache__
 │   │   ├── __init__.cpython-312.pyc
 │   │   ├── dilithium_signer.cpython-312.pyc
-│   │   └── ibe_system.cpython-312.pyc
+│   │   ├── ibe_system.cpython-312.pyc
+│   │   ├── mock_implementations.cpython-312.pyc
+│   │   └── real_dilithium.cpython-312.pyc
 │   ├── dilithium_signer.py
 │   ├── dilithium_signer_old.py
 │   ├── ibe_system.py
-│   └── mock_implementations.py
+│   ├── mock_implementations.py
+│   ├── real_dilithium.py
+│   └── real_ibe.py
+├── data
+│   └── quantum_commerce.db
 ├── database
 │   ├── __init__.py
 │   ├── __pycache__
 │   │   ├── __init__.cpython-312.pyc
+│   │   ├── encryption.cpython-312.pyc
 │   │   └── schema.cpython-312.pyc
+│   ├── encryption.py
 │   ├── migrations
 │   └── schema.py
 ├── deploy.sh
@@ -39,6 +56,9 @@
 ├── logs
 ├── main.py
 ├── main.py.backup
+├── middleware
+│   ├── __init__.py
+│   └── security.py
 ├── models
 │   └── __init__.py
 ├── monitoring
@@ -54,6 +74,7 @@
 │   │       │   └── dashboard.yml
 │   │       └── datasources
 │   │           └── prometheus.yml
+│   ├── health_check.py
 │   ├── metrics.py
 │   └── prometheus
 │       ├── alerts.yml
@@ -62,8 +83,11 @@
 │   ├── nginx.conf
 │   ├── nginx.prod.conf
 │   └── ssl
+├── pbc-0.5.14.tar.gz
+├── readme2.md
 ├── render.yaml
 ├── requirements.txt
+├── requirements_crypto.txt
 ├── requirements_missing.txt
 ├── scripts
 │   ├── create_db.py
@@ -71,16 +95,22 @@
 │   ├── init_crypto.py
 │   ├── recreate_tables.py
 │   └── setup.sh
+├── secrets
 ├── services
 │   ├── __init__.py
 │   ├── __pycache__
 │   │   ├── __init__.cpython-312.pyc
 │   │   ├── auth_service.cpython-312.pyc
-│   │   └── payment_service.cpython-312.pyc
+│   │   ├── payment_service.cpython-312.pyc
+│   │   ├── rate_limiter.cpython-312.pyc
+│   │   └── session_service.cpython-312.pyc
 │   ├── auth_old
 │   │   └── auth_service.py
 │   ├── auth_service.py
-│   └── payment_service.py
+│   ├── payment_service.py
+│   ├── rate_limiter.py
+│   └── session_service.py
+├── setup_secure.sh
 ├── static
 │   ├── assets
 │   │   ├── index-24bAKmhN.js
@@ -88,8 +118,12 @@
 │   ├── index.html
 │   └── vite.svg
 ├── test_api.sh
+├── test_secure_api.sh
 ├── tests
-│   └── test_api_full.py
+│   ├── __pycache__
+│   │   └── test_security.cpython-312-pytest-7.4.2.pyc
+│   ├── test_api_full.py
+│   └── test_security.py
 ├── tree.txt
 └── webapp
     ├── README.md
@@ -111,6 +145,8 @@
     │   │   ├── Layout.tsx
     │   │   ├── PrivateRoute.tsx
     │   │   └── ProductCard.tsx
+    │   ├── config
+    │   │   └── security.ts
     │   ├── contexts
     │   │   ├── AuthContext.tsx
     │   │   └── CartContext.tsx
@@ -126,6 +162,8 @@
     │   │   ├── OrderSuccessPage.tsx
     │   │   ├── ProductDetailPage.tsx
     │   │   └── RegisterPage.tsx
+    │   ├── services
+    │   │   └── api.ts
     │   └── vite-env.d.ts
     ├── tailwind.config.js
     ├── tsconfig.app.json
@@ -133,4 +171,4 @@
     ├── tsconfig.node.json
     └── vite.config.ts
 
-38 directories, 96 files
+45 directories, 127 files

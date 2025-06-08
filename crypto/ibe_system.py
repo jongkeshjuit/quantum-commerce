@@ -4,8 +4,12 @@ import uuid
 import base64
 from datetime import datetime
 from typing import Dict, Any, Tuple
+from config.security import SecurityConfig
 
 class IBESystem:
+    def __init__(self):
+        # Use from config
+        self.master_secret = SecurityConfig.IBE_MASTER_KEY
     def setup(self) -> Tuple[bytes, Dict[str, Any]]:
         return b"mock_master_key", {
             "curve": "secp256r1",

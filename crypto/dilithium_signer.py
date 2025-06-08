@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Dict, Any, Tuple
 from dataclasses import dataclass
 from enum import Enum
+from config.security import SecurityConfig
 
 class SecurityLevel(Enum):
     LEVEL2 = "Dilithium2"
@@ -26,10 +27,11 @@ class SignedTransaction:
     public_key_id: str
 
 class DilithiumSigner:
-    def __init__(self, security_level: SecurityLevel = SecurityLevel.LEVEL2):
-        self.security_level = security_level
-        self.algorithm = security_level.value
-        
+    # def __init__(self, security_level: SecurityLevel = SecurityLevel.LEVEL2):
+    #     self.security_level = security_level
+    #     self.algorithm = security_level.value
+    def __init__(self):
+        self.master_secret = SecurityConfig.DILITHIUM_MASTER_KEY
     def generate_keypair(self) -> Tuple[bytes, bytes, str]:
         key_id = str(uuid.uuid4())
         public_key = b"mock_dilithium_public_key"
