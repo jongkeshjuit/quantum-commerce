@@ -115,7 +115,7 @@ class SecureConfig:
         db_host = os.getenv("DB_HOST", "localhost")
         db_port = os.getenv("DB_PORT", "5432")
         db_name = os.getenv("DB_NAME", "quantum_commerce")
-        db_user = os.getenv("DB_USER", "qsc_user")
+        db_user = os.getenv("DB_USER", "quantum_user")
         
         # Password từ encrypted storage
         db_password = self.get_secret("database_password")

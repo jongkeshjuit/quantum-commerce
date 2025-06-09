@@ -1,3 +1,4 @@
+// webapp/src/contexts/AuthContext.tsx - FIXED VERSION
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
 import { SecurityConfig } from '../config/security';
@@ -6,6 +7,7 @@ interface User {
     id: string;
     email: string;
     name: string;
+    username: string;
     user_type: string;
     is_admin?: boolean;
 }
@@ -36,12 +38,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (token) {
-            // Verify token and get user info
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            // In production, make API call to get user info
             const savedUser = localStorage.getItem(SecurityConfig.USER_KEY);
             if (savedUser) {
-                setUser(JSON.parse(savedUser));
+                try {
+                    setUser(JSON.parse(savedUser));
+                } catch (error) {
+                    console.error('Error parsing saved user:', error);
+                    localStorage.removeItem(SecurityConfig.USER_KEY);
+                    localStorage.removeItem(SecurityConfig.TOKEN_KEY);
+                    setToken(null);
+                }
             }
         }
         setLoading(false);
@@ -54,23 +61,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 password
             });
 
-            const { access_token, user_id, email: userEmail } = response.data;
+            console.log('Login response:', response.data); // Debug log
 
-            const userData = {
-                id: response.data.user_id || response.data.id,
-                email: userEmail,
-                name: response.data.username || response.data.full_name || userEmail.split('@')[0],
-                user_type: response.data.is_admin ? 'admin' : 'customer'
+            // Handle different response structures from backend
+            const userData: User = {
+                id: response.data.user?.id || response.data.user_id || response.data.id,
+                email: response.data.user?.email || response.data.email || email,
+                name: response.data.user?.full_name || response.data.user?.username || response.data.username || response.data.name || email.split('@')[0],
+                username: response.data.user?.username || response.data.username || email.split('@')[0],
+                user_type: (response.data.user?.is_admin || response.data.is_admin) ? 'admin' : 'customer',
+                is_admin: response.data.user?.is_admin || response.data.is_admin || false
             };
 
-            localStorage.setItem(SecurityConfig.TOKEN_KEY, access_token);
+            const accessToken = response.data.access_token;
+
+            if (!accessToken) {
+                throw new Error('No access token received');
+            }
+
+            localStorage.setItem(SecurityConfig.TOKEN_KEY, accessToken);
             localStorage.setItem(SecurityConfig.USER_KEY, JSON.stringify(userData));
 
-            setToken(access_token);
+            setToken(accessToken);
             setUser(userData);
 
-            api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-        } catch (error) {
+            api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+            
+            console.log('Login successful:', userData); // Debug log
+        } catch (error: any) {
+            console.error('Login error:', error.response?.data || error.message);
             throw error;
         }
     };
@@ -81,27 +100,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 email,
                 username: name,
                 password,
-                full_name: name,
-                user_type: 'customer'
+                full_name: name
             });
 
-            const { access_token, user_id, email: userEmail } = response.data;
+            console.log('Register response:', response.data); // Debug log
 
-            const userData = {
-                id: response.data.user_id || response.data.id,
-                email: userEmail,
-                name: response.data.username || name,
-                user_type: response.data.is_admin ? 'admin' : 'customer'
+            // Handle registration response
+            const userData: User = {
+                id: response.data.user?.id || response.data.user_id || response.data.id,
+                email: response.data.user?.email || response.data.email || email,
+                name: response.data.user?.full_name || response.data.user?.username || response.data.username || name,
+                username: response.data.user?.username || response.data.username || name,
+                user_type: (response.data.user?.is_admin || response.data.is_admin) ? 'admin' : 'customer',
+                is_admin: response.data.user?.is_admin || response.data.is_admin || false
             };
 
-            localStorage.setItem(SecurityConfig.TOKEN_KEY, access_token);
+            const accessToken = response.data.access_token;
+
+            if (!accessToken) {
+                throw new Error('No access token received');
+            }
+
+            localStorage.setItem(SecurityConfig.TOKEN_KEY, accessToken);
             localStorage.setItem(SecurityConfig.USER_KEY, JSON.stringify(userData));
 
-            setToken(access_token);
+            setToken(accessToken);
             setUser(userData);
 
-            api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-        } catch (error) {
+            api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+            
+            console.log('Registration successful:', userData); // Debug log
+        } catch (error: any) {
+            console.error('Registration error:', error.response?.data || error.message);
             throw error;
         }
     };
@@ -112,6 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         delete api.defaults.headers.common['Authorization'];
         setToken(null);
         setUser(null);
+        console.log('Logout successful'); // Debug log
     };
 
     return (

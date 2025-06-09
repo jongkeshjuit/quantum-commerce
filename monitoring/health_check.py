@@ -154,7 +154,7 @@ async def readiness_probe(db: Session = Depends(get_db)):
     """Kubernetes readiness probe"""
     try:
         # Quick DB check
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         return {'status': 'ready'}
     except Exception as e:
         logger.error(f"Readiness check failed: {e}")

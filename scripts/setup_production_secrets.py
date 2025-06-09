@@ -102,7 +102,7 @@ DEBUG=false
 DB_HOST=postgres
 DB_PORT=5432
 DB_NAME=quantum_commerce
-DB_USER=qsc_user
+DB_USER=quantum_user
 
 # Redis Connection  
 REDIS_HOST=redis

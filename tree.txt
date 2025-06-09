@@ -2,41 +2,19 @@
 ├── Dockerfile
 ├── README.md
 ├── __pycache__
-│   ├── api_with_metrics.cpython-312.pyc
-│   ├── main.cpython-312.pyc
-│   ├── main.cpython-39.pyc
-│   ├── main_enhanced.cpython-312.pyc
-│   └── main_with_metrics.cpython-312.pyc
+│   └── main.cpython-312.pyc
 ├── api
 │   └── __init__.py
-├── bin
-│   ├── Dockerfile.prod
-│   ├── debug_monitoring.sh
-│   ├── docker-compose-dev.yml
-│   ├── docker-compose-simple.yml
-│   ├── docker-compose.simple.yml
-│   ├── docker-compose.yml.backup
-│   ├── emergency_fix.sh
-│   ├── final_success_test.sh
-│   ├── final_test.sh
-│   ├── fix_monitoring.sh
-│   ├── fix_project.sh
-│   ├── main_enhanced.py
-│   ├── main_with_metrics.py
-│   ├── manual_fix.sh
-│   └── quick_setup_fixed.sh
+├── api_config_data_database_keys_logs_metrics.txt
 ├── config
 │   ├── __init__.py
 │   ├── __pycache__
 │   │   ├── __init__.cpython-312.pyc
-│   │   ├── __init__.cpython-39.pyc
 │   │   ├── database.cpython-312.pyc
-│   │   ├── database.cpython-39.pyc
-│   │   ├── secure_config.cpython-312.pyc
-│   │   ├── secure_config.cpython-39.pyc
-│   │   ├── security.cpython-312.pyc
-│   │   └── security.cpython-39.pyc
+│   │   └── dev_config.cpython-312.pyc
 │   ├── database.py
+│   ├── dev_config.py
+│   ├── development_config.py
 │   ├── logging.py
 │   ├── secure_config.py
 │   ├── security.py
@@ -45,13 +23,10 @@
 │   ├── __init__.py
 │   ├── __pycache__
 │   │   ├── __init__.cpython-312.pyc
-│   │   ├── __init__.cpython-39.pyc
 │   │   ├── dilithium_signer.cpython-312.pyc
-│   │   ├── dilithium_signer.cpython-39.pyc
 │   │   ├── ibe_system.cpython-312.pyc
-│   │   ├── ibe_system.cpython-39.pyc
 │   │   ├── production_crypto.cpython-312.pyc
-│   │   └── production_crypto.cpython-39.pyc
+│   │   └── real_dilithium.cpython-312.pyc
 │   ├── crypto_factory.py
 │   ├── dilithium_signer.py
 │   ├── hsm_integration.py
@@ -63,37 +38,32 @@
 │   ├── real_dilithium_liboqs.py
 │   └── real_ibe.py
 ├── data
-│   └── quantum_commerce.db
 ├── database
 │   ├── __init__.py
 │   ├── __pycache__
 │   │   ├── __init__.cpython-312.pyc
-│   │   ├── __init__.cpython-39.pyc
 │   │   ├── encryption.cpython-312.pyc
-│   │   ├── encryption.cpython-39.pyc
-│   │   ├── schema.cpython-312.pyc
-│   │   └── schema.cpython-39.pyc
+│   │   └── schema.cpython-312.pyc
 │   ├── encryption.py
 │   ├── migrations
 │   ├── models.py
 │   └── schema.py
-├── docker-compose.monitoring-fixed.yml
-├── docker-compose.monitoring.yml
+├── docker-compose-simple.yml
 ├── docker-compose.production.yml
 ├── docker-compose.yml
 ├── keys
 │   ├── dilithium
 │   └── ibe
 │       └── master_key.pem
+├── list.txt
 ├── logs
 ├── main.py
 ├── metrics
-│   ├── __pycache__
-│   │   └── quantum_metrics.cpython-312.pyc
 │   └── quantum_metrics.py
 ├── middleware
 │   ├── __init__.py
 │   └── security.py
+├── middleware_models_monitoring_nginx_secrets_security.txt
 ├── models
 │   └── __init__.py
 ├── monitoring
@@ -124,18 +94,21 @@
 ├── requirements_crypto.txt
 ├── requirements_missing.txt
 ├── scripts
-│   ├── api_with_metrics.py
 │   ├── create_db.py
 │   ├── create_tables.py
-│   ├── init_crypto.py
-│   ├── key_rotation.py
-│   ├── recreate_tables.py
-│   ├── setup.sh
-│   ├── setup_production_secrets.py
-│   ├── setup_prodution_secrets.py
-│   ├── setup_secrets.py
-│   ├── setup_secrets.sh
-│   └── setup_vault.sh
+│   ├── create_tables_fixed.py
+│   ├── scripts
+│   │   ├── api_with_metrics.py
+│   │   ├── init_crypto.py
+│   │   ├── key_rotation.py
+│   │   ├── quick_dev_setup.sh
+│   │   ├── recreate_tables.py
+│   │   ├── setup.sh
+│   │   ├── setup_prod_secrets.py
+│   │   ├── setup_secrets.py
+│   │   ├── setup_secrets.sh
+│   │   └── setup_vault.sh
+│   └── setup_production_secrets.py
 ├── secrets
 │   ├── encrypted_secrets.json
 │   └── salt.dat
@@ -146,84 +119,72 @@
 │   ├── __init__.py
 │   ├── __pycache__
 │   │   ├── __init__.cpython-312.pyc
-│   │   ├── __init__.cpython-39.pyc
 │   │   ├── auth_service.cpython-312.pyc
-│   │   ├── auth_service.cpython-39.pyc
 │   │   ├── payment_service.cpython-312.pyc
-│   │   ├── payment_service.cpython-39.pyc
 │   │   ├── rate_limiter.cpython-312.pyc
-│   │   ├── rate_limiter.cpython-39.pyc
-│   │   ├── session_service.cpython-312.pyc
-│   │   └── session_service.cpython-39.pyc
+│   │   ├── secret_manager.cpython-312.pyc
+│   │   └── session_service.cpython-312.pyc
 │   ├── auth_service.py
 │   ├── payment_service.py
 │   ├── rate_limiter.py
 │   ├── secret_manager.py
 │   └── session_service.py
+├── services_env_envlocal_envprod_env_production_dockers_main_list.txt
 ├── static
 │   ├── assets
 │   │   ├── index-24bAKmhN.js
 │   │   └── index-SQx0ldFy.css
 │   ├── index.html
 │   └── vite.svg
-├── test_config.py
-├── test_final.py
-├── tests
-│   ├── test_api_full.py
-│   ├── test_api_metrics.py
-│   ├── test_api_simple.py
-│   ├── test_crypto.py
-│   ├── test_quantum_api.py
-│   ├── test_real_crypto.py
-│   ├── test_security.py
-│   ├── test_simple.py
-│   └── test_vault_connection.py
 ├── tree.txt
-└── webapp
-    ├── Dockerfile
-    ├── README.md
-    ├── eslint.config.js
-    ├── index.html
-    ├── netlify.toml
-    ├── package-lock.json
-    ├── package.json
-    ├── postcss.config.js
-    ├── public
-    │   └── vite.svg
-    ├── src
-    │   ├── App.css
-    │   ├── App.tsx
-    │   ├── assets
-    │   │   └── react.svg
-    │   ├── components
-    │   │   ├── Hero.tsx
-    │   │   ├── Layout.tsx
-    │   │   ├── PrivateRoute.tsx
-    │   │   └── ProductCard.tsx
-    │   ├── config
-    │   │   └── security.ts
-    │   ├── contexts
-    │   │   ├── AuthContext.tsx
-    │   │   └── CartContext.tsx
-    │   ├── index.css
-    │   ├── main.tsx
-    │   ├── pages
-    │   │   ├── AdminDashboard.tsx
-    │   │   ├── CartPage.tsx
-    │   │   ├── CheckoutPage.tsx
-    │   │   ├── HomePage.tsx
-    │   │   ├── LoginPage.tsx
-    │   │   ├── OrderHistoryPage.tsx
-    │   │   ├── OrderSuccessPage.tsx
-    │   │   ├── ProductDetailPage.tsx
-    │   │   └── RegisterPage.tsx
-    │   ├── services
-    │   │   └── api.ts
-    │   └── vite-env.d.ts
-    ├── tailwind.config.js
-    ├── tsconfig.app.json
-    ├── tsconfig.json
-    ├── tsconfig.node.json
-    └── vite.config.ts
+├── webapp
+│   ├── Dockerfile
+│   ├── README.md
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── netlify.toml
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── public
+│   │   └── vite.svg
+│   ├── src
+│   │   ├── App.css
+│   │   ├── App.tsx
+│   │   ├── assets
+│   │   │   └── react.svg
+│   │   ├── components
+│   │   │   ├── Hero.tsx
+│   │   │   ├── Layout.tsx
+│   │   │   ├── PrivateRoute.tsx
+│   │   │   └── ProductCard.tsx
+│   │   ├── config
+│   │   │   └── security.ts
+│   │   ├── contexts
+│   │   │   ├── AuthContext.tsx
+│   │   │   └── CartContext.tsx
+│   │   ├── index.css
+│   │   ├── main.tsx
+│   │   ├── pages
+│   │   │   ├── AdminDashboard.tsx
+│   │   │   ├── CartPage.tsx
+│   │   │   ├── CheckoutPage.tsx
+│   │   │   ├── HomePage.tsx
+│   │   │   ├── LoginPage.tsx
+│   │   │   ├── OrderDetailsPage.tsx
+│   │   │   ├── OrderHistoryPage.tsx
+│   │   │   ├── OrderSuccessPage.tsx
+│   │   │   ├── ProductDetailPage.tsx
+│   │   │   └── RegisterPage.tsx
+│   │   ├── services
+│   │   │   └── api.ts
+│   │   └── vite-env.d.ts
+│   ├── tailwind.config.js
+│   ├── tree.txt
+│   ├── tsconfig.app.json
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   └── vite.config.ts
+└── webapp.txt
 
-47 directories, 180 files
+45 directories, 143 files

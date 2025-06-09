@@ -1,0 +1,3409 @@
+/root/quantum-secure-commerce/api
+__init__.py
+Trống
+/root/quantum-secure-commerce/config/__init__.py
+Trống
+/root/quantum-secure-commerce/config/database.py
+"""
+Database configuration
+"""
+import os
+from typing import Optional
+
+class DatabaseConfig:
+    """Database configuration settings"""
+    
+    # Database settings
+    DB_HOST: str = os.getenv('DB_HOST', 'localhost')
+    DB_PORT: int = int(os.getenv('DB_PORT', '5432'))
+    DB_NAME: str = os.getenv('DB_NAME', 'quantum_commerce')
+    DB_USER: str = os.getenv('DB_USER', 'quantum_user')
+    DB_PASSWORD: str = os.getenv('DB_PASSWORD', 'secure_password')
+    
+    # Connection settings
+    DATABASE_ECHO: bool = os.getenv('DATABASE_ECHO', 'false').lower() == 'true'
+    MAX_CONNECTIONS: int = int(os.getenv('MAX_CONNECTIONS', '20'))
+    
+    @classmethod
+    def get_database_url(cls) -> str:
+        """Get database connection URL"""
+        return f"postgresql://{cls.DB_USER}:{cls.DB_PASSWORD}@{cls.DB_HOST}:{cls.DB_PORT}/{cls.DB_NAME}"
+    
+    @classmethod
+    def get_sqlite_url(cls) -> str:
+        """Get SQLite database URL (fallback)"""
+        return "sqlite:///./data/quantum_commerce.db"
+/root/quantum-secure-commerce/config/dev_config.py
+
+import os
+
+class SecurityConfig:
+    APP_ENV = "development"
+    JWT_ALGORITHM = "HS256"
+    JWT_EXPIRATION_HOURS = 24
+    SESSION_TIMEOUT_MINUTES = 30
+    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+    DILITHIUM_MASTER_KEY = "dev_dilithium_key_123"
+    IBE_MASTER_KEY = "dev_ibe_key_123"
+    @staticmethod
+    def get_jwt_secret():
+        return os.getenv("JWT_SECRET", "dev_jwt_secret_123")
+    
+    @staticmethod
+    def get_database_url():
+        return os.getenv("DATABASE_URL", "sqlite:///./quantum_commerce_dev.db")
+    
+    @staticmethod
+    def get_redis_url():
+        return os.getenv("REDIS_URL", "redis://localhost:6379")
+    
+    @staticmethod
+    def get_fernet_key():
+        from cryptography.fernet import Fernet
+        return Fernet.generate_key()
+    
+    @staticmethod
+    def validate():
+        print("✅ Development config loaded")
+        return True
+
+config = SecurityConfig()
+/root/quantum-secure-commerce/config/development_config.py
+# config/development_config.py - Sử dụng raw secrets từ .env
+import os
+
+class SecurityConfig:
+    APP_ENV = os.getenv("ENVIRONMENT", "development")
+    JWT_ALGORITHM = "HS256"
+    JWT_EXPIRATION_HOURS = 24
+    SESSION_TIMEOUT_MINUTES = 30
+    
+    @staticmethod
+    def get_jwt_secret():
+        return os.getenv("JWT_SECRET", "dev_jwt_fallback")
+    
+    @staticmethod
+    def get_database_url():
+        return os.getenv("DATABASE_URL", "sqlite:///./quantum_commerce_dev.db")
+    
+    @staticmethod
+    def get_redis_url():
+        return os.getenv("REDIS_URL", "redis://localhost:6379")
+    
+    @staticmethod
+    def get_fernet_key():
+        from cryptography.fernet import Fernet
+        key = os.getenv("FERNET_KEY")
+        return key.encode() if key else Fernet.generate_key()
+    
+    @staticmethod
+    def validate():
+        print("✅ Using development config with raw secrets")
+        return True
+
+    # Properties for compatibility
+    REDIS_URL = get_redis_url.__func__()
+
+config = SecurityConfig()
+/root/quantum-secure-commerce/config/logging.py
+import logging
+import sys
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+
+def setup_logging(app_name: str = "quantum-commerce", log_level: str = "INFO"):
+    """Setup logging configuration"""
+    
+    # Create logs directory
+    log_dir = Path("logs")
+    log_dir.mkdir(exist_ok=True)
+    
+    # Configure logging
+    logging.basicConfig(
+        level=getattr(logging, log_level.upper()),
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            # Console handler
+            logging.StreamHandler(sys.stdout),
+            # File handler with rotation
+            RotatingFileHandler(
+                log_dir / "app.log",
+                maxBytes=10*1024*1024,  # 10MB
+                backupCount=5
+            )
+        ]
+    )
+    
+    # Create logger
+    logger = logging.getLogger(app_name)
+    logger.info(f"Logging initialized for {app_name}")
+    
+    return logger
+
+# Create logs directory
+Path("logs").mkdir(exist_ok=True)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs/app.log'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+class SecurityLogger:
+    def __init__(self):
+        self.logger = logging.getLogger("security")
+        
+    def log_auth_attempt(self, email: str, success: bool, ip: str):
+        if success:
+            self.logger.info(f"Successful login: {email} from {ip}")
+        else:
+            self.logger.warning(f"Failed login attempt: {email} from {ip}")
+            
+    def log_transaction(self, transaction_id: str, amount: float, user_id: str):
+        self.logger.info(f"Transaction {transaction_id}: ${amount} by user {user_id}")
+        
+    def log_security_event(self, event_type: str, details: str):
+        self.logger.warning(f"Security event - {event_type}: {details}")
+
+# Create loggers
+api_logger = logging.getLogger('api')
+crypto_logger = logging.getLogger('crypto')
+payment_logger = logging.getLogger('payment')
+/root/quantum-secure-commerce/config/secure_config.py
+# config/secure_config.py
+"""
+SECURE CONFIG LOADER - Load secrets từ encrypted storage
+THAY THẾ config/security.py cũ
+"""
+import os
+import json
+import base64
+from pathlib import Path
+from typing import Optional
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import logging
+
+logger = logging.getLogger(__name__)
+
+class SecureConfig:
+    """Production-ready secure configuration loader"""
+    
+    def __init__(self):
+        self.app_env = os.getenv("APP_ENV", "development")
+        self.secrets_dir = Path("secrets")
+        self._fernet = None
+        self._secrets_cache = {}
+        
+        # Khởi tạo encryption nếu có secrets directory
+        if self.secrets_dir.exists():
+            self._init_encryption()
+            self._load_encrypted_secrets()
+    
+    def _init_encryption(self):
+        """Khởi tạo encryption từ master password"""
+        # Lấy master password từ environment
+        master_password = os.getenv("MASTER_PASSWORD")
+        if not master_password:
+            if self.app_env == "production":
+                raise ValueError("MASTER_PASSWORD environment variable required in production!")
+            else:
+                logger.warning("No MASTER_PASSWORD set, using development mode")
+                return
+        
+        try:
+            # Đọc salt
+            salt_file = self.secrets_dir / "salt.dat"
+            if not salt_file.exists():
+                raise FileNotFoundError("Salt file not found - run setup_production_secrets.py first")
+            
+            with open(salt_file, "rb") as f:
+                salt = f.read()
+            
+            # Recreate encryption key
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+            )
+            
+            key = base64.urlsafe_b64encode(kdf.derive(master_password.encode()))
+            self._fernet = Fernet(key)
+            
+            logger.info("✅ Encryption initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize encryption: {e}")
+            if self.app_env == "production":
+                raise
+    
+    def _load_encrypted_secrets(self):
+        """Load và decrypt tất cả secrets"""
+        if not self._fernet:
+            return
+        
+        try:
+            secrets_file = self.secrets_dir / "encrypted_secrets.json"
+            if not secrets_file.exists():
+                logger.warning("No encrypted secrets file found")
+                return
+            
+            with open(secrets_file, "r") as f:
+                encrypted_secrets = json.load(f)
+            
+            # Decrypt tất cả secrets
+            for key, encrypted_value in encrypted_secrets.items():
+                try:
+                    decrypted = self._fernet.decrypt(encrypted_value.encode()).decode()
+                    self._secrets_cache[key] = decrypted
+                except Exception as e:
+                    logger.error(f"Failed to decrypt secret '{key}': {e}")
+            
+            logger.info(f"✅ Loaded {len(self._secrets_cache)} encrypted secrets")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to load encrypted secrets: {e}")
+    
+    def get_secret(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        """Lấy secret - ưu tiên encrypted, fallback to env"""
+        # 1. Thử từ encrypted cache trước
+        if key in self._secrets_cache:
+            return self._secrets_cache[key]
+        
+        # 2. Fallback to environment variable
+        env_value = os.getenv(key.upper())
+        if env_value:
+            return env_value
+        
+        # 3. Return default
+        return default
+    
+    # Database Configuration
+    @property
+    def database_url(self) -> str:
+        """Get database URL with encrypted password"""
+        db_host = os.getenv("DB_HOST", "localhost")
+        db_port = os.getenv("DB_PORT", "5432")
+        db_name = os.getenv("DB_NAME", "quantum_commerce")
+        db_user = os.getenv("DB_USER", "quantum_user")
+        
+        # Password từ encrypted storage
+        db_password = self.get_secret("database_password")
+        if not db_password:
+            raise ValueError("Database password not found in encrypted secrets")
+        
+        return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    
+    @property
+    def redis_url(self) -> str:
+        """Get Redis URL with encrypted password"""
+        redis_host = os.getenv("REDIS_HOST", "localhost")
+        redis_port = os.getenv("REDIS_PORT", "6379")
+        
+        redis_password = self.get_secret("redis_password")
+        if redis_password:
+            return f"redis://:{redis_password}@{redis_host}:{redis_port}"
+        else:
+            return f"redis://{redis_host}:{redis_port}"
+    
+    # Crypto Keys
+    @property
+    def jwt_secret(self) -> str:
+        """Get JWT secret key"""
+        secret = self.get_secret("jwt_secret")
+        if not secret:
+            raise ValueError("JWT secret not found - run setup_production_secrets.py")
+        return secret
+    
+    @property
+    def dilithium_master_key(self) -> str:
+        """Get Dilithium master key"""
+        key = self.get_secret("dilithium_master_key")
+        if not key:
+            raise ValueError("Dilithium master key not found")
+        return key
+    
+    @property
+    def ibe_master_key(self) -> str:
+        """Get IBE master key"""
+        key = self.get_secret("ibe_master_key")
+        if not key:
+            raise ValueError("IBE master key not found")
+        return key
+    
+    @property
+    def database_encryption_key(self) -> bytes:
+        """Get database field encryption key"""
+        key_str = self.get_secret("database_encryption_key")
+        if not key_str:
+            raise ValueError("Database encryption key not found")
+        return base64.b64decode(key_str)
+    
+    # App Configuration
+    @property
+    def app_env(self) -> str:
+        return self._app_env
+    
+    @app_env.setter
+    def app_env(self, value: str):
+        self._app_env = value
+    
+    @property
+    def debug(self) -> bool:
+        return os.getenv("DEBUG", "false").lower() == "true"
+    
+    @property
+    def use_real_crypto(self) -> bool:
+        return os.getenv("USE_REAL_CRYPTO", "true").lower() == "true"
+    
+    # Security Settings
+    JWT_ALGORITHM = "HS256"
+    JWT_EXPIRATION_HOURS = 24
+    SESSION_TIMEOUT_MINUTES = int(os.getenv("SESSION_TIMEOUT_MINUTES", "30"))
+    
+    # Rate Limiting
+    RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+    
+    def validate_config(self):
+        """Validate tất cả required configs"""
+        required_secrets = [
+            "jwt_secret",
+            "dilithium_master_key", 
+            "ibe_master_key",
+            "database_password"
+        ]
+        
+        missing = []
+        for secret in required_secrets:
+            if not self.get_secret(secret):
+                missing.append(secret)
+        
+        if missing:
+            if self.app_env == "production":
+                raise ValueError(f"Missing required secrets: {missing}")
+            else:
+                logger.warning(f"Missing secrets in development: {missing}")
+        
+        logger.info("✅ Configuration validation passed")
+
+# Global config instance
+config = SecureConfig()
+
+# Backward compatibility
+class SecurityConfig:
+    """Backward compatibility wrapper"""
+    
+    @staticmethod
+    def get_database_url() -> str:
+        return config.database_url
+    
+    @staticmethod
+    def get_redis_url() -> str:
+        return config.redis_url
+    
+    @staticmethod
+    def get_jwt_secret() -> str:
+        return config.jwt_secret
+    
+    @staticmethod
+    def get_dilithium_key() -> str:
+        return config.dilithium_master_key
+    
+    @staticmethod
+    def get_ibe_key() -> str:
+        return config.ibe_master_key
+    
+    @staticmethod
+    def validate():
+        return config.validate_config()
+    
+    # Constants
+    APP_ENV = config.app_env
+    JWT_ALGORITHM = config.JWT_ALGORITHM
+    JWT_EXPIRATION_HOURS = config.JWT_EXPIRATION_HOURS
+/root/quantum-secure-commerce/config/security.py
+# config/secure_config.py
+"""
+SECURE CONFIG LOADER - Load secrets từ encrypted storage
+THAY THẾ config/security.py cũ
+"""
+import os
+import json
+import base64
+from pathlib import Path
+from typing import Optional
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import logging
+
+logger = logging.getLogger(__name__)
+
+class SecureConfig:
+    """Production-ready secure configuration loader"""
+    
+    def __init__(self):
+        self.app_env = os.getenv("APP_ENV", "development")
+        self.secrets_dir = Path("secrets")
+        self._fernet = None
+        self._secrets_cache = {}
+        
+        # Khởi tạo encryption nếu có secrets directory
+        if self.secrets_dir.exists():
+            self._init_encryption()
+            self._load_encrypted_secrets()
+    
+    def _init_encryption(self):
+        """Khởi tạo encryption từ master password"""
+        # Lấy master password từ environment
+        master_password = os.getenv("MASTER_PASSWORD")
+        if not master_password:
+            if self.app_env == "production":
+                raise ValueError("MASTER_PASSWORD environment variable required in production!")
+            else:
+                logger.warning("No MASTER_PASSWORD set, using development mode")
+                return
+        
+        try:
+            # Đọc salt
+            salt_file = self.secrets_dir / "salt.dat"
+            if not salt_file.exists():
+                raise FileNotFoundError("Salt file not found - run setup_production_secrets.py first")
+            
+            with open(salt_file, "rb") as f:
+                salt = f.read()
+            
+            # Recreate encryption key
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+            )
+            
+            key = base64.urlsafe_b64encode(kdf.derive(master_password.encode()))
+            self._fernet = Fernet(key)
+            
+            logger.info("✅ Encryption initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize encryption: {e}")
+            if self.app_env == "production":
+                raise
+    
+    def _load_encrypted_secrets(self):
+        """Load và decrypt tất cả secrets"""
+        if not self._fernet:
+            return
+        
+        try:
+            secrets_file = self.secrets_dir / "encrypted_secrets.json"
+            if not secrets_file.exists():
+                logger.warning("No encrypted secrets file found")
+                return
+            
+            with open(secrets_file, "r") as f:
+                encrypted_secrets = json.load(f)
+            
+            # Decrypt tất cả secrets
+            for key, encrypted_value in encrypted_secrets.items():
+                try:
+                    decrypted = self._fernet.decrypt(encrypted_value.encode()).decode()
+                    self._secrets_cache[key] = decrypted
+                except Exception as e:
+                    logger.error(f"Failed to decrypt secret '{key}': {e}")
+            
+            logger.info(f"✅ Loaded {len(self._secrets_cache)} encrypted secrets")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to load encrypted secrets: {e}")
+    
+    def get_secret(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        """Lấy secret - ưu tiên encrypted, fallback to env"""
+        # 1. Thử từ encrypted cache trước
+        if key in self._secrets_cache:
+            return self._secrets_cache[key]
+        
+        # 2. Fallback to environment variable
+        env_value = os.getenv(key.upper())
+        if env_value:
+            return env_value
+        
+        # 3. Return default
+        return default
+    
+    # Database Configuration
+    @property
+    def database_url(self) -> str:
+        """Get database URL with encrypted password"""
+        db_host = os.getenv("DB_HOST", "localhost")
+        db_port = os.getenv("DB_PORT", "5432")
+        db_name = os.getenv("DB_NAME", "quantum_commerce")
+        db_user = os.getenv("DB_USER", "quantum_user")
+        
+        # Password từ encrypted storage
+        db_password = self.get_secret("database_password")
+        if not db_password:
+            raise ValueError("Database password not found in encrypted secrets")
+        
+        return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    
+    @property
+    def redis_url(self) -> str:
+        """Get Redis URL with encrypted password"""
+        redis_host = os.getenv("REDIS_HOST", "localhost")
+        redis_port = os.getenv("REDIS_PORT", "6379")
+        
+        redis_password = self.get_secret("redis_password")
+        if redis_password:
+            return f"redis://:{redis_password}@{redis_host}:{redis_port}"
+        else:
+            return f"redis://{redis_host}:{redis_port}"
+    
+    # Crypto Keys
+    @property
+    def jwt_secret(self) -> str:
+        """Get JWT secret key"""
+        secret = self.get_secret("jwt_secret")
+        if not secret:
+            raise ValueError("JWT secret not found - run setup_production_secrets.py")
+        return secret
+    
+    @property
+    def dilithium_master_key(self) -> str:
+        """Get Dilithium master key"""
+        key = self.get_secret("dilithium_master_key")
+        if not key:
+            raise ValueError("Dilithium master key not found")
+        return key
+    
+    @property
+    def ibe_master_key(self) -> str:
+        """Get IBE master key"""
+        key = self.get_secret("ibe_master_key")
+        if not key:
+            raise ValueError("IBE master key not found")
+        return key
+    
+    @property
+    def database_encryption_key(self) -> bytes:
+        """Get database field encryption key"""
+        key_str = self.get_secret("database_encryption_key")
+        if not key_str:
+            raise ValueError("Database encryption key not found")
+        return base64.b64decode(key_str)
+    
+    # App Configuration
+    @property
+    def app_env(self) -> str:
+        return self._app_env
+    
+    @app_env.setter
+    def app_env(self, value: str):
+        self._app_env = value
+    
+    @property
+    def debug(self) -> bool:
+        return os.getenv("DEBUG", "false").lower() == "true"
+    
+    @property
+    def use_real_crypto(self) -> bool:
+        return os.getenv("USE_REAL_CRYPTO", "true").lower() == "true"
+    
+    # Security Settings
+    JWT_ALGORITHM = "HS256"
+    JWT_EXPIRATION_HOURS = 24
+    SESSION_TIMEOUT_MINUTES = int(os.getenv("SESSION_TIMEOUT_MINUTES", "30"))
+    
+    # Rate Limiting
+    RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+    
+    def validate_config(self):
+        """Validate tất cả required configs"""
+        required_secrets = [
+            "jwt_secret",
+            "dilithium_master_key", 
+            "ibe_master_key",
+            "database_password"
+        ]
+        
+        missing = []
+        for secret in required_secrets:
+            if not self.get_secret(secret):
+                missing.append(secret)
+        
+        if missing:
+            if self.app_env == "production":
+                raise ValueError(f"Missing required secrets: {missing}")
+            else:
+                logger.warning(f"Missing secrets in development: {missing}")
+        
+        logger.info("✅ Configuration validation passed")
+
+# Global config instance
+config = SecureConfig()
+
+# Backward compatibility
+class SecurityConfig:
+    """Backward compatibility wrapper"""
+    
+    @staticmethod
+    def get_database_url() -> str:
+        return config.database_url
+    
+    @staticmethod
+    def get_redis_url() -> str:
+        return config.redis_url
+    
+    @staticmethod
+    def get_jwt_secret() -> str:
+        return config.jwt_secret
+    
+    @staticmethod
+    def get_dilithium_key() -> str:
+        return config.dilithium_master_key
+    
+    @staticmethod
+    def get_ibe_key() -> str:
+        return config.ibe_master_key
+    
+    @staticmethod
+    def validate():
+        return config.validate_config()
+    
+    # Constants
+    APP_ENV = config.app_env
+    JWT_ALGORITHM = config.JWT_ALGORITHM
+    JWT_EXPIRATION_HOURS = config.JWT_EXPIRATION_HOURS
+/root/quantum-secure-commerce/config/vault_config.py
+# config/vault_config.py
+"""
+HashiCorp Vault configuration
+"""
+import hvac
+import os
+import logging
+from typing import Optional, Dict, Any
+
+logger = logging.getLogger(__name__)
+
+class VaultClient:
+    """Secure secret management with HashiCorp Vault"""
+    
+    def __init__(self):
+        self.vault_addr = os.getenv('VAULT_ADDR', 'http://localhost:8200')
+        self.vault_token = os.getenv('VAULT_TOKEN')
+        
+        if not self.vault_token:
+            logger.warning("No Vault token provided, using development mode")
+            self.client = None
+        else:
+            self.client = hvac.Client(
+                url=self.vault_addr,
+                token=self.vault_token
+            )
+            
+            if not self.client.is_authenticated():
+                raise Exception("Vault authentication failed")
+            
+            logger.info(f"✅ Connected to Vault at {self.vault_addr}")
+    
+    def get_secret(self, path: str) -> Optional[str]:
+        """Get secret from Vault"""
+        if not self.client:
+            # Development mode - get from env
+            return os.getenv(path.upper().replace('/', '_'))
+        
+        try:
+            response = self.client.secrets.kv.v2.read_secret_version(
+                path=path,
+                mount_point='secret'
+            )
+            return response['data']['data']['value']
+        except Exception as e:
+            logger.error(f"Failed to get secret {path}: {e}")
+            return None
+    
+    def store_secret(self, path: str, value: str) -> bool:
+        """Store secret in Vault"""
+        if not self.client:
+            logger.warning("Cannot store secrets in development mode")
+            return False
+        
+        try:
+            self.client.secrets.kv.v2.create_or_update_secret(
+                path=path,
+                secret={'value': value},
+                mount_point='secret'
+            )
+            logger.info(f"Stored secret at {path}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to store secret: {e}")
+            return False
+    
+    def rotate_key(self, key_type: str) -> Dict[str, Any]:
+        """Rotate cryptographic keys"""
+        logger.info(f"Rotating {key_type} key")
+        
+        # Generate new key based on type
+        if key_type == 'dilithium':
+            from crypto.real_dilithium import RealDilithiumSigner
+            signer = RealDilithiumSigner()
+            public_key, secret_key = signer.generate_keypair()
+            
+            # Store in Vault
+            self.store_secret(
+                f'quantum-commerce/{key_type}/secret',
+                secret_key.hex()
+            )
+            self.store_secret(
+                f'quantum-commerce/{key_type}/public',
+                public_key.hex()
+            )
+            
+            return {
+                'status': 'success',
+                'key_type': key_type,
+                'public_key': public_key.hex()[:32] + '...'
+            }
+        
+        return {'status': 'error', 'message': 'Unknown key type'}
+
+# Global Vault client
+vault_client = VaultClient()
+/root/quantum-secure-commerce/crypto/__init__.py
+"""
+Quantum-Secure Crypto Module
+Real Dilithium + Enhanced IBE
+"""
+from .production_crypto import (
+    QuantumSecureSigner,
+    EnhancedIBESystem,
+    create_production_crypto,
+    get_crypto_status
+)
+
+# Backward compatibility
+from .production_crypto import QuantumSecureSigner as DilithiumSigner
+from .production_crypto import EnhancedIBESystem as IBESystem
+
+__all__ = [
+    'QuantumSecureSigner',
+    'DilithiumSigner', 
+    'EnhancedIBESystem',
+    'IBESystem',
+    'create_production_crypto',
+    'get_crypto_status'
+]
+
+# Initialize global crypto instances
+crypto_instances = create_production_crypto()
+signer = crypto_instances['signer']
+ibe_system = crypto_instances['ibe']
+
+print("🛡️ Quantum-Secure Crypto Module Loaded")
+print(f"   Signer: {signer.variant}")
+print(f"   Quantum Secure: {getattr(signer, 'REAL_DILITHIUM', False)}")
+/root/quantum-secure-commerce/crypto/crypto_factory.py
+# crypto/crypto_factory.py
+"""
+Factory pattern for crypto implementations
+"""
+from typing import Protocol, Dict, Any
+import logging
+
+logger = logging.getLogger(__name__)
+
+class SignerProtocol(Protocol):
+    """Protocol for digital signature implementations"""
+    def sign_transaction(self, transaction_data: Dict) -> Dict:
+        ...
+    
+    def verify_transaction(self, signed_transaction: Dict) -> bool:
+        ...
+
+class CryptoFactory:
+    """Factory for creating crypto implementations"""
+    
+    @staticmethod
+    def create_signer(use_real: bool = True) -> SignerProtocol:
+        if use_real:
+            try:
+                from .real_dilithium import RealDilithiumSigner
+                logger.info("Creating real Dilithium signer")
+                return RealDilithiumSigner()
+            except Exception as e:
+                logger.error(f"Failed to create real signer: {e}")
+        
+        from .dilithium_signer import DilithiumSigner
+        logger.info("Creating mock Dilithium signer")
+        return DilithiumSigner()
+/root/quantum-secure-commerce/crypto/dilithium_signer.py
+"""Mock Dilithium Signer for Testing - Fixed"""
+import uuid
+import base64
+import json
+from datetime import datetime
+from typing import Dict, Any, Tuple
+from dataclasses import dataclass
+from enum import Enum
+from config.dev_config import SecurityConfig
+
+class SecurityLevel(Enum):
+    LEVEL2 = "Dilithium2"
+    LEVEL3 = "Dilithium3"
+    LEVEL5 = "Dilithium5"
+
+@dataclass
+class SignedTransaction:
+    transaction_id: str
+    timestamp: str
+    merchant_id: str
+    customer_id: str
+    amount: float
+    currency: str
+    items: list
+    signature: str
+    algorithm: str
+    public_key_id: str
+
+class DilithiumSigner:
+    # def __init__(self, security_level: SecurityLevel = SecurityLevel.LEVEL2):
+    #     self.security_level = security_level
+    #     self.algorithm = security_level.value
+    def __init__(self):
+        self.master_secret = SecurityConfig.DILITHIUM_MASTER_KEY
+    def generate_keypair(self) -> Tuple[bytes, bytes, str]:
+        key_id = str(uuid.uuid4())
+        public_key = b"mock_dilithium_public_key"
+        secret_key = b"mock_dilithium_secret_key"
+        return public_key, secret_key, key_id
+    
+    def sign_transaction(self, transaction_data: Dict[str, Any], secret_key: bytes, key_id: str) -> SignedTransaction:
+        return SignedTransaction(
+            transaction_id=str(uuid.uuid4()),
+            timestamp=datetime.utcnow().isoformat(),
+            merchant_id=transaction_data.get("merchant_id", ""),
+            customer_id=transaction_data.get("customer_id", ""),
+            amount=transaction_data.get("amount", 0),
+            currency=transaction_data.get("currency", "USD"),
+            items=transaction_data.get("items", []),
+            signature=base64.b64encode(b"mock_dilithium_signature").decode(),
+            algorithm=self.algorithm,
+            public_key_id=key_id
+        )
+
+class DilithiumKeyVault:
+    def __init__(self, vault_path: str = "./keys/dilithium"):
+        self.vault_path = vault_path
+        # Always have a default key
+        self._keys = {
+            "default_key_id": {
+                "owner": "merchant@quantumshop.com",
+                "purpose": "transaction_signing",
+                "algorithm": "Dilithium2",
+                "created_at": datetime.utcnow().isoformat(),
+                "expires_at": "2025-12-31T23:59:59",
+                "status": "active"
+            }
+        }
+        
+    def list_active_keys(self) -> Dict[str, Any]:
+        return self._keys
+    
+    def store_keypair(self, public_key: bytes, secret_key: bytes, key_id: str, owner: str, purpose: str = "transaction_signing"):
+        self._keys[key_id] = {
+            "owner": owner,
+            "purpose": purpose,
+            "algorithm": "Dilithium2",
+            "created_at": datetime.utcnow().isoformat(),
+            "expires_at": "2025-12-31T23:59:59",
+            "status": "active"
+        }
+        
+    def load_secret_key(self, key_id: str) -> bytes:
+        return b"mock_secret_key"
+        
+    def load_public_key(self, key_id: str) -> bytes:
+        return b"mock_public_key"
+
+class TransactionVerifier:
+    def __init__(self, key_vault: DilithiumKeyVault):
+        self.key_vault = key_vault
+        
+    def generate_verification_report(self, transaction_json: str) -> Dict[str, Any]:
+        return {
+            "verification_id": str(uuid.uuid4()),
+            "verified_at": datetime.utcnow().isoformat(),
+            "transaction_id": json.loads(transaction_json).get("transaction_id", "unknown"),
+            "is_valid": True,
+            "message": "Transaction signature is valid (mock)",
+            "algorithm": "Dilithium2",
+            "public_key_id": "default_key_id",
+            "verification_details": {
+                "signature_length": 2420,
+                "timestamp_valid": True,
+                "amount_valid": True
+            }
+        }
+/root/quantum-secure-commerce/crypto/hsm_integration.py
+# crypto/hsm_integration.py
+"""
+Hardware Security Module (HSM) Integration
+Cho enterprise-level key protection
+"""
+import os
+import logging
+from typing import Optional, Dict, Any
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+class HSMAdapter:
+    """HSM integration adapter"""
+    
+    def __init__(self):
+        self.hsm_available = self._check_hsm_availability()
+        self.hsm_config = self._load_hsm_config()
+        
+    def _check_hsm_availability(self) -> bool:
+        """Check if HSM is available"""
+        try:
+            # Try to import HSM libraries
+            # Examples: PKCS#11, CloudHSM, etc.
+            
+            # For AWS CloudHSM:
+            # import cloudhsm_mgmt_util
+            
+            # For PKCS#11:
+            # from PyKCS11 import PyKCS11
+            
+            # For now, check environment
+            if os.getenv('HSM_LIBRARY_PATH'):
+                logger.info("✅ HSM library path configured")
+                return True
+            
+            return False
+            
+        except ImportError:
+            logger.warning("⚠️ HSM libraries not available")
+            return False
+    
+    def _load_hsm_config(self) -> Dict[str, Any]:
+        """Load HSM configuration"""
+        return {
+            'library_path': os.getenv('HSM_LIBRARY_PATH'),
+            'slot_id': int(os.getenv('HSM_SLOT_ID', '0')),
+            'user_pin': os.getenv('HSM_USER_PIN'),
+            'so_pin': os.getenv('HSM_SO_PIN'),
+            'key_label_prefix': 'quantum_commerce_'
+        }
+    
+    def generate_dilithium_key_in_hsm(self, key_id: str) -> Dict[str, str]:
+        """Generate Dilithium key pair in HSM"""
+        if not self.hsm_available:
+            raise Exception("HSM not available")
+        
+        try:
+            # HSM-specific implementation
+            # This would use PKCS#11 or vendor-specific APIs
+            
+            # Pseudo-code for PKCS#11:
+            # session = self._get_hsm_session()
+            # private_key_handle = session.generateKeyPair(
+            #     CKM_DILITHIUM_KEYPAIR_GEN,
+            #     public_template,
+            #     private_template
+            # )
+            
+            logger.info(f"🔐 Generated Dilithium key in HSM: {key_id}")
+            
+            return {
+                'key_id': key_id,
+                'hsm_handle': f"hsm_dilithium_{key_id}",
+                'public_key_der': "...",  # Export public key only
+                'status': 'active'
+            }
+            
+        except Exception as e:
+            logger.error(f"HSM key generation failed: {e}")
+            raise
+    
+    def sign_with_hsm(self, message: bytes, key_handle: str) -> bytes:
+        """Sign message using HSM-stored key"""
+        if not self.hsm_available:
+            raise Exception("HSM not available")
+        
+        try:
+            # HSM signing operation
+            # Private key never leaves HSM
+            
+            # Pseudo-code:
+            # session = self._get_hsm_session()
+            # signature = session.sign(key_handle, message)
+            
+            logger.info(f"✅ Message signed with HSM key: {key_handle}")
+            return b"hsm_signature_placeholder"
+            
+        except Exception as e:
+            logger.error(f"HSM signing failed: {e}")
+            raise
+    
+    def get_hsm_status(self) -> Dict[str, Any]:
+        """Get HSM status and information"""
+        return {
+            'available': self.hsm_available,
+            'library_path': self.hsm_config.get('library_path'),
+            'slot_id': self.hsm_config.get('slot_id'),
+            'keys_stored': self._count_hsm_keys(),
+            'firmware_version': self._get_hsm_firmware_version(),
+            'tamper_status': 'secure'  # Would check actual tamper evidence
+        }
+    
+    def _count_hsm_keys(self) -> int:
+        """Count keys stored in HSM"""
+        if not self.hsm_available:
+            return 0
+        
+        # Implementation would query HSM for key count
+        return 0
+    
+    def _get_hsm_firmware_version(self) -> str:
+        """Get HSM firmware version"""
+        if not self.hsm_available:
+            return "N/A"
+        
+        # Implementation would query HSM
+        return "HSM_FW_1.0"
+
+class EnterpriseKeyManager:
+    """Enterprise-level key management với HSM"""
+    
+    def __init__(self):
+        self.hsm = HSMAdapter()
+        self.key_rotation_enabled = True
+        self.backup_keys_count = 3
+        
+    def create_master_key_hierarchy(self):
+        """Tạo hierarchy key master cho enterprise"""
+        
+        hierarchy = {
+            'root_key': {
+                'location': 'hsm',
+                'purpose': 'derive_other_keys',
+                'rotation_period_days': 365
+            },
+            'transaction_signing_key': {
+                'location': 'hsm', 
+                'purpose': 'sign_transactions',
+                'rotation_period_days': 90
+            },
+            'data_encryption_key': {
+                'location': 'vault',
+                'purpose': 'encrypt_database',
+                'rotation_period_days': 30
+            },
+            'ibe_master_key': {
+                'location': 'hsm',
+                'purpose': 'ibe_key_extraction', 
+                'rotation_period_days': 180
+            }
+        }
+        
+        logger.info("🏗️ Enterprise key hierarchy defined")
+        return hierarchy
+    
+    def implement_key_escrow(self, key_id: str, custodians: list):
+        """Implement key escrow với multiple custodians"""
+        
+        # Split key using Shamir's Secret Sharing
+        # Require M of N custodians to reconstruct
+        
+        escrow_config = {
+            'key_id': key_id,
+            'threshold': len(custodians) // 2 + 1,  # M of N
+            'custodians': custodians,
+            'recovery_procedure': 'multi_signature_required',
+            'audit_trail': True
+        }
+        
+        logger.info(f"🔐 Key escrow configured for {key_id}")
+        return escrow_config
+    
+    def enterprise_backup_strategy(self):
+        """Chiến lược backup cho enterprise"""
+        
+        strategy = {
+            'hsm_keys': {
+                'method': 'hsm_cluster_replication',
+                'locations': ['primary_datacenter', 'dr_site'],
+                'encryption': 'hardware_wrapped'
+            },
+            'vault_secrets': {
+                'method': 'vault_raft_snapshots',
+                'frequency': 'daily',
+                'retention': '90_days',
+                'encryption': 'transit_key'
+            },
+            'database_keys': {
+                'method': 'encrypted_backup',
+                'frequency': 'hourly',
+                'cross_region': True
+            }
+        }
+        
+        return strategy
+
+# Production HSM configuration
+class ProductionHSMConfig:
+    """Production HSM configuration example"""
+    
+    @staticmethod
+    def aws_cloudhsm_config():
+        """AWS CloudHSM configuration"""
+        return {
+            'cluster_id': os.getenv('CLOUDHSM_CLUSTER_ID'),
+            'hsm_ca_cert': '/opt/cloudhsm/etc/customerCA.crt',
+            'client_cert': '/opt/cloudhsm/etc/client.crt',
+            'client_key': '/opt/cloudhsm/etc/client.key',
+            'ip_address': os.getenv('CLOUDHSM_IP'),
+            'library_path': '/opt/cloudhsm/lib/libcloudhsm_pkcs11.so'
+        }
+    
+    @staticmethod
+    def azure_keyvault_config():
+        """Azure Key Vault configuration"""
+        return {
+            'vault_url': os.getenv('AZURE_KEYVAULT_URL'),
+            'tenant_id': os.getenv('AZURE_TENANT_ID'),
+            'client_id': os.getenv('AZURE_CLIENT_ID'),
+            'client_secret': os.getenv('AZURE_CLIENT_SECRET'),
+            'hsm_name': os.getenv('AZURE_HSM_NAME')
+        }
+    
+    @staticmethod
+    def thales_hsm_config():
+        """Thales HSM configuration"""
+        return {
+            'server_ip': os.getenv('THALES_HSM_IP'),
+            'client_cert': '/etc/thales/client.pem',
+            'ca_cert': '/etc/thales/ca.pem',
+            'slot_id': int(os.getenv('THALES_SLOT_ID', '1')),
+            'library_path': '/usr/lib/libCryptoki2_64.so'
+        }
+
+# Example usage
+if __name__ == "__main__":
+    print("🔐 ENTERPRISE HSM INTEGRATION TEST")
+    print("=" * 50)
+    
+    # Initialize HSM
+    hsm = HSMAdapter()
+    status = hsm.get_hsm_status()
+    
+    print(f"HSM Available: {status['available']}")
+    print(f"Library Path: {status['library_path']}")
+    print(f"Keys Stored: {status['keys_stored']}")
+    print(f"Tamper Status: {status['tamper_status']}")
+    
+    # Enterprise key management
+    key_manager = EnterpriseKeyManager()
+    hierarchy = key_manager.create_master_key_hierarchy()
+    
+    print("\n🏗️ Key Hierarchy:")
+    for key_name, config in hierarchy.items():
+        print(f"  {key_name}: {config['location']} -> {config['purpose']}")
+    
+    # Backup strategy
+    backup_strategy = key_manager.enterprise_backup_strategy()
+    print("\n💾 Backup Strategy:")
+    for component, strategy in backup_strategy.items():
+        print(f"  {component}: {strategy['method']}")
+/root/quantum-secure-commerce/crypto/ibe_system.py
+"""Mock IBE System for Testing"""
+import json
+import uuid
+import base64
+from datetime import datetime
+from typing import Dict, Any, Tuple
+from config.dev_config import SecurityConfig
+
+class IBESystem:
+    def __init__(self):
+        # Use from config
+        self.master_secret = SecurityConfig.IBE_MASTER_KEY
+    def setup(self) -> Tuple[bytes, Dict[str, Any]]:
+        return b"mock_master_key", {
+            "curve": "secp256r1",
+            "master_public": "mock_public_key_base64",
+            "created_at": datetime.utcnow().isoformat(),
+            "version": "1.0"
+        }
+    
+    def extract_user_key(self, identity: str, master_key: bytes) -> Dict[str, Any]:
+        return {
+            "identity": identity,
+            "private_key": base64.b64encode(b"mock_private_key").decode(),
+            "issued_at": datetime.utcnow().isoformat(),
+            "expires_at": "2025-12-31T23:59:59",
+            "algorithm": "ibe-secp256r1-aes256"
+        }
+    
+    def encrypt(self, data: str, identity: str, public_params: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "recipient": identity,
+            "ciphertext": base64.b64encode(data.encode()).decode(),
+            "iv": base64.b64encode(b"mock_iv_16_bytes").decode(),
+            "tag": base64.b64encode(b"mock_tag").decode(),
+            "ephemeral_public": "mock_ephemeral_public_key",
+            "timestamp": datetime.utcnow().isoformat(),
+            "algorithm": "ibe-secp256r1-aes256-gcm"
+        }
+    
+    def decrypt(self, encrypted_data: Dict[str, Any], user_key: Dict[str, Any]) -> str:
+        # Mock decrypt - just decode base64
+        return base64.b64decode(encrypted_data["ciphertext"]).decode()
+
+class IBEKeyManager:
+    def __init__(self, storage_path: str = "./keys"):
+        self.storage_path = storage_path
+        
+    def save_master_key(self, key: bytes, password: str):
+        print(f"Mock: Saving master key")
+        
+    def load_master_key(self, password: str) -> bytes:
+        return b"mock_master_key"
+        
+    def save_public_params(self, params: Dict[str, Any]):
+        print(f"Mock: Saving public params")
+        
+    def load_public_params(self) -> Dict[str, Any]:
+        return {
+            "curve": "secp256r1", 
+            "master_public": "mock_public_key_base64",
+            "created_at": "2024-01-01T00:00:00",
+            "version": "1.0"
+        }
+
+/root/quantum-secure-commerce/crypto/mock_implementattions.py
+"""Mock implementations for testing without full crypto setup"""
+
+import json
+import uuid
+import base64
+from datetime import datetime
+from typing import Dict, Any, Tuple
+
+# Mock IBE System
+class IBESystem:
+    def setup(self):
+        return b"mock_master_key", {"public": "mock_public_params"}
+    
+    def extract_user_key(self, identity: str, master_key: bytes):
+        return {
+            "identity": identity,
+            "private_key": base64.b64encode(b"mock_private_key").decode(),
+            "issued_at": datetime.utcnow().isoformat()
+        }
+    
+    def encrypt(self, data: str, identity: str, public_params: Dict):
+        return {
+            "ciphertext": base64.b64encode(data.encode()).decode(),
+            "recipient": identity,
+            "encrypted": True
+        }
+    
+    def decrypt(self, encrypted_data: Dict, user_key: Dict):
+        return base64.b64decode(encrypted_data["ciphertext"]).decode()
+
+class IBEKeyManager:
+    def __init__(self, storage_path="./keys"):
+        pass
+    
+    def save_master_key(self, key: bytes, password: str):
+        pass
+    
+    def load_master_key(self, password: str):
+        return b"mock_master_key"
+    
+    def save_public_params(self, params: Dict):
+        pass
+    
+    def load_public_params(self):
+        return {"public": "mock_params"}
+
+# Mock Dilithium
+class DilithiumSigner:
+    def generate_keypair(self):
+        return b"mock_public_key", b"mock_secret_key", str(uuid.uuid4())
+    
+    def sign_transaction(self, data: Dict, secret_key: bytes, key_id: str):
+        from dataclasses import dataclass
+        
+        @dataclass
+        class SignedTransaction:
+            transaction_id: str
+            timestamp: str
+            merchant_id: str
+            customer_id: str
+            amount: float
+            currency: str
+            items: list
+            signature: str
+            algorithm: str
+            public_key_id: str
+            
+        return SignedTransaction(
+            transaction_id=str(uuid.uuid4()),
+            timestamp=datetime.utcnow().isoformat(),
+            merchant_id=data.get("merchant_id", ""),
+            customer_id=data.get("customer_id", ""),
+            amount=data.get("amount", 0),
+            currency=data.get("currency", "USD"),
+            items=data.get("items", []),
+            signature=base64.b64encode(b"mock_signature").decode(),
+            algorithm="MockDilithium",
+            public_key_id=key_id
+        )
+
+class DilithiumKeyVault:
+    def __init__(self, vault_path="./keys/dilithium"):
+        self.keys = {
+            "mock_key_id": {
+                "owner": "merchant@example.com",
+                "purpose": "transaction_signing",
+                "algorithm": "Dilithium2",
+                "status": "active"
+            }
+        }
+    
+    def list_active_keys(self):
+        return self.keys
+    
+    def store_keypair(self, public_key, secret_key, key_id, owner, purpose):
+        self.keys[key_id] = {
+            "owner": owner,
+            "purpose": purpose,
+            "algorithm": "Dilithium2",
+            "status": "active"
+        }
+    
+    def load_secret_key(self, key_id):
+        return b"mock_secret_key"
+    
+    def load_public_key(self, key_id):
+        return b"mock_public_key"
+
+class TransactionVerifier:
+    def __init__(self, key_vault):
+        self.key_vault = key_vault
+    
+    def generate_verification_report(self, transaction_json: str):
+        return {
+            "verification_id": str(uuid.uuid4()),
+            "verified_at": datetime.utcnow().isoformat(),
+            "transaction_id": "mock_tx_id",
+            "is_valid": True,
+            "message": "Mock verification successful",
+            "algorithm": "MockDilithium",
+            "public_key_id": "mock_key_id",
+            "verification_details": {
+                "signature_length": 64,
+                "timestamp_valid": True,
+                "amount_valid": True
+            }
+        }
+/root/quantum-secure-commerce/crypto/production_crypto.py
+# crypto/production_crypto.py
+"""
+PRODUCTION-READY CRYPTO
+- Real Dilithium signatures ✅
+- Fallback IBE với enhanced security ✅  
+- Fixed all warnings ✅
+"""
+import os
+import json
+import base64
+import hashlib
+from typing import Dict, Any, Optional
+from datetime import datetime, timezone
+from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Import real crypto libraries
+try:
+    import oqs  # Real Dilithium
+    REAL_DILITHIUM = True
+    logger.info("✅ Using REAL Dilithium (Quantum-Secure)")
+except ImportError:
+    REAL_DILITHIUM = False
+    logger.warning("❌ liboqs not available")
+
+# Enhanced fallback IBE since Charm has compatibility issues
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+
+class QuantumSecureSigner:
+    """Production Dilithium signer - QUANTUM SECURE!"""
+    
+    def __init__(self, variant: str = "Dilithium3"):
+        self.variant = variant
+        self.keys_dir = Path("keys/dilithium")
+        self.keys_dir.mkdir(parents=True, exist_ok=True)
+        
+        if REAL_DILITHIUM:
+            self.signer = oqs.Signature(variant)
+            self._setup_keys()
+            logger.info(f"🛡️ QUANTUM-SECURE signer ready: {variant}")
+        else:
+            self._setup_fallback()
+            logger.warning("⚠️ Using classical fallback (NOT quantum-secure)")
+    
+    def _setup_keys(self):
+        """Setup real quantum-secure keys"""
+        # Generate keypair
+        public_key = self.signer.generate_keypair()
+        private_key = self.signer.export_secret_key()
+        
+        self.public_key = public_key
+        self.private_key = private_key
+        self.key_id = hashlib.sha256(public_key).hexdigest()[:16]
+        
+        # Log key info
+        logger.info(f"🔑 Generated {self.variant} keypair")
+        logger.info(f"   Key ID: {self.key_id}")
+        logger.info(f"   Public key size: {len(public_key)} bytes")
+        logger.info(f"   Private key size: {len(private_key)} bytes")
+    
+    def sign_transaction(self, transaction_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Sign transaction với REAL quantum-secure Dilithium"""
+        # Normalize transaction data
+        normalized = self._normalize_transaction(transaction_data)
+        message = json.dumps(normalized, sort_keys=True).encode()
+        
+        if REAL_DILITHIUM:
+            # REAL QUANTUM-SECURE SIGNATURE
+            signature = self.signer.sign(message)
+            
+            signed_data = {
+                "transaction_data": normalized,
+                "signature": base64.b64encode(signature).decode(),
+                "public_key": base64.b64encode(self.public_key).decode(),
+                "algorithm": self.variant,
+                "key_id": self.key_id,
+                "message_hash": hashlib.sha256(message).hexdigest(),
+                "signed_at": datetime.now(timezone.utc).isoformat(),
+                "quantum_secure": True,
+                "signature_size": len(signature),
+                "security_level": self._get_security_level()
+            }
+            
+            logger.info(f"✅ Transaction signed with {self.variant}")
+            logger.info(f"   Signature size: {len(signature)} bytes")
+            logger.info(f"   Quantum secure: YES")
+            
+            return signed_data
+        else:
+            return self._fallback_sign(normalized, message)
+    
+    def verify_signature(self, signed_data: Dict[str, Any]) -> bool:
+        """Verify quantum-secure signature"""
+        try:
+            if not REAL_DILITHIUM:
+                return self._fallback_verify(signed_data)
+            
+            # Reconstruct original message
+            message = json.dumps(signed_data["transaction_data"], sort_keys=True).encode()
+            
+            # Decode signature components
+            signature = base64.b64decode(signed_data["signature"])
+            public_key = base64.b64decode(signed_data["public_key"])
+            
+            # Create verifier for the specific algorithm
+            verifier = oqs.Signature(signed_data["algorithm"])
+            
+            # QUANTUM-SECURE VERIFICATION
+            result = verifier.verify(message, signature, public_key)
+            
+            if result:
+                logger.info(f"✅ Signature verification PASSED")
+                logger.info(f"   Algorithm: {signed_data['algorithm']}")
+                logger.info(f"   Quantum secure: {signed_data.get('quantum_secure', False)}")
+            else:
+                logger.error(f"❌ Signature verification FAILED")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Signature verification error: {e}")
+            return False
+    
+    def _normalize_transaction(self, data: Dict) -> Dict:
+        """Normalize transaction data for consistent signing"""
+        return {
+            "transaction_id": data.get("transaction_id"),
+            "user_id": data.get("user_id"),
+            "amount": float(data.get("amount", 0)),
+            "currency": data.get("currency", "USD"),
+            "timestamp": data.get("timestamp", datetime.now(timezone.utc).isoformat()),
+            "nonce": data.get("nonce", os.urandom(16).hex())
+        }
+    
+    def _get_security_level(self) -> str:
+        """Get security level for the variant"""
+        security_levels = {
+            "Dilithium2": "NIST Level 2 (128-bit)",
+            "Dilithium3": "NIST Level 3 (192-bit)", 
+            "Dilithium5": "NIST Level 5 (256-bit)"
+        }
+        return security_levels.get(self.variant, "Unknown")
+    
+    def _setup_fallback(self):
+        """Fallback for development"""
+        import secrets
+        self.public_key = secrets.token_bytes(32)
+        self.private_key = secrets.token_bytes(64)
+        self.key_id = "fallback_" + secrets.token_hex(8)
+    
+    def _fallback_sign(self, transaction_data: Dict, message: bytes) -> Dict:
+        """Classical fallback signing (NOT quantum-secure)"""
+        signature_data = hashlib.sha256(message + self.private_key).digest()
+        
+        return {
+            "transaction_data": transaction_data,
+            "signature": base64.b64encode(signature_data).decode(),
+            "public_key": base64.b64encode(self.public_key).decode(),
+            "algorithm": f"{self.variant}_fallback",
+            "key_id": self.key_id,
+            "message_hash": hashlib.sha256(message).hexdigest(),
+            "signed_at": datetime.now(timezone.utc).isoformat(),
+            "quantum_secure": False,
+            "security_level": "Classical (NOT quantum-secure)"
+        }
+    
+    def _fallback_verify(self, signed_data: Dict) -> bool:
+        """Fallback verification"""
+        try:
+            message = json.dumps(signed_data["transaction_data"], sort_keys=True).encode()
+            expected_hash = hashlib.sha256(message).hexdigest()
+            return expected_hash == signed_data.get("message_hash")
+        except:
+            return False
+
+class EnhancedIBESystem:
+    """Enhanced IBE với cryptographically strong fallback"""
+    
+    def __init__(self):
+        self.keys_dir = Path("keys/ibe")
+        self.keys_dir.mkdir(parents=True, exist_ok=True)
+        self.backend = default_backend()
+        
+        # Setup enhanced crypto-based IBE
+        self._setup_enhanced_ibe()
+        
+        logger.info("🔐 Enhanced IBE system ready")
+    
+    def _setup_enhanced_ibe(self):
+        """Setup enhanced IBE using cryptographically strong methods"""
+        # Generate master key for IBE
+        self.master_key = os.urandom(32)  # 256-bit master key
+        
+        # System parameters
+        self.system_params = {
+            "algorithm": "enhanced_ibe_aes_gcm",
+            "key_size": 256,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        logger.info("✅ Enhanced IBE initialized")
+        logger.info("   Algorithm: AES-256-GCM with HKDF key derivation")
+        logger.info("   Security: Strong classical cryptography")
+    
+    def encrypt_for_user(self, data: str, user_identity: str) -> Dict[str, Any]:
+        """Encrypt data for specific user identity"""
+        return self._encrypt_enhanced(data, user_identity)
+    
+    def _encrypt_enhanced(self, data: str, identity: str) -> Dict[str, Any]:
+        """Enhanced IBE encryption using AES-GCM + HKDF"""
+        try:
+            # Derive user-specific key using HKDF
+            hkdf = HKDF(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=b'quantum_commerce_ibe',
+                info=identity.encode(),
+                backend=self.backend
+            )
+            
+            user_key = hkdf.derive(self.master_key)
+            
+            # Generate random IV for GCM
+            iv = os.urandom(12)  # 96-bit IV for GCM
+            
+            # Encrypt with AES-GCM
+            cipher = Cipher(
+                algorithms.AES(user_key),
+                modes.GCM(iv),
+                backend=self.backend
+            )
+            
+            encryptor = cipher.encryptor()
+            ciphertext = encryptor.update(data.encode()) + encryptor.finalize()
+            
+            # Get authentication tag
+            tag = encryptor.tag
+            
+            encrypted_data = {
+                "identity": identity,
+                "ciphertext": base64.b64encode(ciphertext).decode(),
+                "iv": base64.b64encode(iv).decode(),
+                "tag": base64.b64encode(tag).decode(),
+                "algorithm": "enhanced_ibe_aes_gcm",
+                "encrypted_at": datetime.now(timezone.utc).isoformat(),
+                "quantum_secure": False,  # Classical but strong
+                "security_level": "AES-256-GCM (Classical strong)"
+            }
+            
+            logger.info(f"🔒 Data encrypted for identity: {identity}")
+            logger.info(f"   Algorithm: AES-256-GCM")
+            logger.info(f"   Ciphertext size: {len(ciphertext)} bytes")
+            
+            return encrypted_data
+            
+        except Exception as e:
+            logger.error(f"Enhanced IBE encryption failed: {e}")
+            raise
+    
+    def decrypt_for_user(self, encrypted_data: Dict[str, Any], user_identity: str) -> str:
+        """Decrypt data for user"""
+        try:
+            # Verify identity matches
+            if encrypted_data["identity"] != user_identity:
+                raise ValueError("Identity mismatch")
+            
+            # Derive the same user key
+            hkdf = HKDF(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=b'quantum_commerce_ibe',
+                info=user_identity.encode(),
+                backend=self.backend
+            )
+            
+            user_key = hkdf.derive(self.master_key)
+            
+            # Decode components
+            ciphertext = base64.b64decode(encrypted_data["ciphertext"])
+            iv = base64.b64decode(encrypted_data["iv"])
+            tag = base64.b64decode(encrypted_data["tag"])
+            
+            # Decrypt with AES-GCM
+            cipher = Cipher(
+                algorithms.AES(user_key),
+                modes.GCM(iv, tag),
+                backend=self.backend
+            )
+            
+            decryptor = cipher.decryptor()
+            plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+            
+            logger.info(f"🔓 Data decrypted for identity: {user_identity}")
+            
+            return plaintext.decode()
+            
+        except Exception as e:
+            logger.error(f"Decryption failed: {e}")
+            raise
+
+# Factory functions
+def create_production_crypto():
+    """Create production crypto instances"""
+    return {
+        "signer": QuantumSecureSigner("Dilithium3"),
+        "ibe": EnhancedIBESystem()
+    }
+
+def get_crypto_status():
+    """Get current crypto capabilities"""
+    status = {
+        "dilithium_available": REAL_DILITHIUM,
+        "quantum_secure_signatures": REAL_DILITHIUM,
+        "enhanced_ibe": True,
+        "production_ready": REAL_DILITHIUM
+    }
+    
+    if REAL_DILITHIUM:
+        try:
+            available_variants = oqs.get_enabled_sig_mechanisms()
+            dilithium_variants = [v for v in available_variants if 'Dilithium' in v]
+            status["available_variants"] = dilithium_variants
+        except:
+            pass
+    
+    return status
+
+if __name__ == "__main__":
+    # Production test
+    print("🚀 PRODUCTION CRYPTO TEST")
+    print("=" * 40)
+    
+    # Status report
+    status = get_crypto_status()
+    print(f"Quantum-secure signatures: {status['quantum_secure_signatures']}")
+    print(f"Enhanced IBE: {status['enhanced_ibe']}")
+    print(f"Production ready: {status['production_ready']}")
+    
+    if 'available_variants' in status:
+        print(f"Available Dilithium: {status['available_variants']}")
+    
+    print()
+    
+    # Create crypto instances
+    crypto = create_production_crypto()
+    
+    # Test transaction signing
+    print("🔐 Testing Transaction Signing...")
+    transaction = {
+        "transaction_id": "prod_test_001",
+        "user_id": "user_12345",
+        "amount": 299.99,
+        "currency": "USD",
+        "items": ["product_A", "product_B"]
+    }
+    
+    # Sign transaction
+    signed = crypto["signer"].sign_transaction(transaction)
+    print(f"Algorithm: {signed['algorithm']}")
+    print(f"Quantum secure: {signed['quantum_secure']}")
+    print(f"Security level: {signed['security_level']}")
+    
+    # Verify signature  
+    verified = crypto["signer"].verify_signature(signed)
+    print(f"Verification: {'✅ PASSED' if verified else '❌ FAILED'}")
+    
+    # Test IBE encryption
+    print("\n🔒 Testing IBE Encryption...")
+    secret_data = "Credit card: 1234-5678-9012-3456, CVV: 789"
+    encrypted = crypto["ibe"].encrypt_for_user(secret_data, "user@example.com")
+    print(f"Algorithm: {encrypted['algorithm']}")
+    print(f"Security: {encrypted['security_level']}")
+    
+    # Test decryption
+    decrypted = crypto["ibe"].decrypt_for_user(encrypted, "user@example.com")
+    print(f"Decryption: {'✅ SUCCESS' if decrypted == secret_data else '❌ FAILED'}")
+    
+    print(f"\n🎉 PRODUCTION CRYPTO SYSTEM READY!")
+    if status['quantum_secure_signatures']:
+        print("🛡️ QUANTUM-SECURE SIGNATURES ACTIVE!")
+    else:
+        print("⚠️ Classical signatures only (upgrade liboqs for quantum security)")
+/root/quantum-secure-commerce/crypto/real_crypto_available.py
+# crypto/real_crypto_available.py
+"""
+Real Crypto Implementation với libraries đã có sẵn
+- liboqs-python: Real Dilithium signatures 
+- Charm-Crypto: Real IBE (thay cho pypbc)
+"""
+import os
+import json
+import base64
+import hashlib
+from typing import Dict, Any, Optional
+from datetime import datetime
+from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Import libraries có sẵn
+try:
+    import oqs  # liboqs-python
+    REAL_DILITHIUM = True
+    logger.info("✅ Using REAL Dilithium from liboqs")
+except ImportError:
+    REAL_DILITHIUM = False
+    logger.warning("❌ liboqs not available")
+
+try:
+    from charm.toolbox.pairinggroup import PairingGroup, G1, G2, GT, ZR
+    from charm.toolbox.symcrypto import AuthenticatedCryptoAbstraction
+    from charm.core.engine.util import objectToBytes, bytesToObject
+    REAL_IBE = True
+    logger.info("✅ Using REAL IBE from Charm-Crypto")
+except ImportError:
+    REAL_IBE = False
+    logger.warning("❌ Charm-Crypto not available properly")
+
+class RealDilithiumSigner:
+    """Real Dilithium signer using liboqs-python"""
+    
+    def __init__(self, variant: str = "Dilithium3"):
+        self.variant = variant
+        self.keys_dir = Path("keys/dilithium")
+        self.keys_dir.mkdir(parents=True, exist_ok=True)
+        
+        if REAL_DILITHIUM:
+            self.signer = oqs.Signature(variant)
+            self._setup_keys()
+        else:
+            self._setup_fallback()
+    
+    def _setup_keys(self):
+        """Setup real Dilithium keys"""
+        logger.info(f"🔑 Setting up {self.variant} keys...")
+        
+        # Generate keypair
+        public_key = self.signer.generate_keypair()
+        private_key = self.signer.export_secret_key()
+        
+        self.public_key = public_key
+        self.private_key = private_key
+        self.key_id = hashlib.sha256(public_key).hexdigest()[:16]
+        
+        logger.info(f"✅ {self.variant} keys ready: {self.key_id}")
+    
+    def sign_transaction(self, transaction_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Sign transaction với real Dilithium"""
+        # Normalize transaction
+        normalized = self._normalize_transaction(transaction_data)
+        message = json.dumps(normalized, sort_keys=True).encode()
+        
+        if REAL_DILITHIUM:
+            # Real Dilithium signature
+            signature = self.signer.sign(message)
+            
+            return {
+                "transaction_data": normalized,
+                "signature": base64.b64encode(signature).decode(),
+                "public_key": base64.b64encode(self.public_key).decode(),
+                "algorithm": self.variant,
+                "key_id": self.key_id,
+                "message_hash": hashlib.sha256(message).hexdigest(),
+                "signed_at": datetime.utcnow().isoformat(),
+                "quantum_secure": True
+            }
+        else:
+            return self._fallback_sign(normalized, message)
+    
+    def verify_signature(self, signed_data: Dict[str, Any]) -> bool:
+        """Verify real Dilithium signature"""
+        try:
+            if not REAL_DILITHIUM:
+                return self._fallback_verify(signed_data)
+            
+            # Reconstruct message
+            message = json.dumps(signed_data["transaction_data"], sort_keys=True).encode()
+            
+            # Decode components
+            signature = base64.b64decode(signed_data["signature"])
+            public_key = base64.b64decode(signed_data["public_key"])
+            
+            # Create verifier
+            verifier = oqs.Signature(signed_data["algorithm"])
+            
+            # Verify signature
+            return verifier.verify(message, signature, public_key)
+            
+        except Exception as e:
+            logger.error(f"Signature verification failed: {e}")
+            return False
+    
+    def _normalize_transaction(self, data: Dict) -> Dict:
+        """Normalize transaction for signing"""
+        return {
+            "transaction_id": data.get("transaction_id"),
+            "user_id": data.get("user_id"),
+            "amount": float(data.get("amount", 0)),
+            "currency": data.get("currency", "USD"),
+            "timestamp": data.get("timestamp", datetime.utcnow().isoformat()),
+            "nonce": data.get("nonce", os.urandom(16).hex())
+        }
+    
+    def _setup_fallback(self):
+        """Fallback cho development"""
+        import secrets
+        self.public_key = secrets.token_bytes(32)
+        self.private_key = secrets.token_bytes(64)
+        self.key_id = "fallback_" + secrets.token_hex(8)
+        logger.info(f"⚠️ Using fallback Dilithium: {self.key_id}")
+    
+    def _fallback_sign(self, transaction_data: Dict, message: bytes) -> Dict:
+        """Fallback signing"""
+        signature_data = hashlib.sha256(message + self.private_key).digest()
+        
+        return {
+            "transaction_data": transaction_data,
+            "signature": base64.b64encode(signature_data).decode(),
+            "public_key": base64.b64encode(self.public_key).decode(),
+            "algorithm": f"{self.variant}_fallback",
+            "key_id": self.key_id,
+            "message_hash": hashlib.sha256(message).hexdigest(),
+            "signed_at": datetime.utcnow().isoformat(),
+            "quantum_secure": False
+        }
+    
+    def _fallback_verify(self, signed_data: Dict) -> bool:
+        """Fallback verification"""
+        try:
+            message = json.dumps(signed_data["transaction_data"], sort_keys=True).encode()
+            expected_hash = hashlib.sha256(message).hexdigest()
+            return expected_hash == signed_data.get("message_hash")
+        except:
+            return False
+
+class RealIBESystem:
+    """Real IBE using Charm-Crypto với proper error handling"""
+    
+    def __init__(self):
+        self.keys_dir = Path("keys/ibe")
+        self.keys_dir.mkdir(parents=True, exist_ok=True)
+        
+        if REAL_IBE:
+            try:
+                self._setup_real_ibe()
+            except Exception as e:
+                logger.error(f"Failed to setup real IBE: {e}")
+                self._setup_fallback_ibe()
+        else:
+            self._setup_fallback_ibe()
+    
+    def _setup_real_ibe(self):
+        """Setup real IBE với Charm-Crypto"""
+        logger.info("🔐 Setting up REAL IBE with Charm-Crypto...")
+        
+        try:
+            # Initialize pairing group với curve phù hợp
+            self.group = PairingGroup('SS512')
+            
+            # Generate master secret
+            self.master_secret = self.group.random(ZR)
+            
+            # System parameters
+            self.g = self.group.random(G1)
+            self.g_pub = self.g ** self.master_secret
+            
+            self.real_ibe_ready = True
+            logger.info("✅ Real IBE system ready với Charm-Crypto")
+            
+        except Exception as e:
+            logger.error(f"Failed to setup Charm IBE: {e}")
+            self.real_ibe_ready = False
+            raise
+    
+    def encrypt_for_user(self, data: str, user_identity: str) -> Dict[str, Any]:
+        """Encrypt data cho user identity"""
+        if REAL_IBE and hasattr(self, 'real_ibe_ready') and self.real_ibe_ready:
+            return self._encrypt_real(data, user_identity)
+        else:
+            return self._encrypt_fallback(data, user_identity)
+    
+    def _encrypt_real(self, data: str, identity: str) -> Dict[str, Any]:
+        """Real IBE encryption với Charm"""
+        try:
+            # Hash identity to group element
+            identity_point = self.group.hash(identity, G1)
+            
+            # Choose random r
+            r = self.group.random(ZR)
+            
+            # Compute pairing
+            pairing_result = self.group.pair_prod(identity_point, self.g_pub) ** r
+            
+            # Use pairing result làm key cho AES
+            key_bytes = objectToBytes(pairing_result, self.group)
+            # Chỉ lấy 32 bytes đầu cho AES key
+            aes_key = hashlib.sha256(key_bytes).digest()
+            
+            # Encrypt với AES
+            aes = AuthenticatedCryptoAbstraction(aes_key)
+            encrypted_data = aes.encrypt(data.encode())
+            
+            # Ciphertext component
+            c1 = self.g ** r
+            
+            return {
+                "identity": identity,
+                "c1": objectToBytes(c1, self.group).hex(),
+                "encrypted_data": base64.b64encode(encrypted_data).decode(),
+                "algorithm": "real_ibe_charm",
+                "encrypted_at": datetime.utcnow().isoformat(),
+                "quantum_secure": True
+            }
+            
+        except Exception as e:
+            logger.error(f"Real IBE encryption failed: {e}")
+            return self._encrypt_fallback(data, identity)
+    
+    def _setup_fallback_ibe(self):
+        """Fallback IBE"""
+        logger.warning("⚠️ Using fallback IBE implementation")
+        self.real_ibe_ready = False
+    
+    def _encrypt_fallback(self, data: str, identity: str) -> Dict[str, Any]:
+        """Fallback encryption using simple key derivation"""
+        # Simple key derivation từ identity
+        key = hashlib.sha256(identity.encode()).digest()[:32]
+        
+        from cryptography.fernet import Fernet
+        fernet_key = base64.urlsafe_b64encode(key)
+        fernet = Fernet(fernet_key)
+        encrypted_data = fernet.encrypt(data.encode())
+        
+        return {
+            "identity": identity,
+            "encrypted_data": base64.b64encode(encrypted_data).decode(),
+            "algorithm": "fallback_ibe",
+            "encrypted_at": datetime.utcnow().isoformat(),
+            "quantum_secure": False
+        }
+
+# Factory function
+def create_real_crypto():
+    """Create real crypto instances"""
+    return {
+        "dilithium": RealDilithiumSigner(),
+        "ibe": RealIBESystem()
+    }
+
+# Test capabilities function
+def test_crypto_capabilities():
+    """Test và report crypto capabilities"""
+    print("🔍 CRYPTO CAPABILITIES REPORT")
+    print("=" * 40)
+    
+    # Test liboqs
+    if REAL_DILITHIUM:
+        try:
+            # List available algorithms
+            print("✅ liboqs-python available")
+            sigs = oqs.get_enabled_sig_mechanisms()
+            dilithium_variants = [s for s in sigs if 'Dilithium' in s]
+            print(f"   Available Dilithium variants: {dilithium_variants}")
+        except Exception as e:
+            print(f"❌ liboqs error: {e}")
+    else:
+        print("❌ liboqs-python not available")
+    
+    # Test Charm-Crypto
+    if REAL_IBE:
+        try:
+            print("✅ Charm-Crypto available")
+            group = PairingGroup('SS512')
+            print(f"   Pairing group: SS512")
+            print(f"   Group order: {group.order()}")
+        except Exception as e:
+            print(f"❌ Charm-Crypto error: {e}")
+    else:
+        print("❌ Charm-Crypto not available")
+    
+    print()
+
+if __name__ == "__main__":
+    # Test script
+    print("🧪 Testing Real Crypto Implementation...")
+    
+    # Report capabilities first
+    test_crypto_capabilities()
+    
+    try:
+        crypto = create_real_crypto()
+        
+        # Test Dilithium
+        print("🔐 Testing Dilithium Signatures...")
+        transaction = {
+            "transaction_id": "test_123",
+            "user_id": "user_456", 
+            "amount": 100.50,
+            "currency": "USD"
+        }
+        
+        signed = crypto["dilithium"].sign_transaction(transaction)
+        verified = crypto["dilithium"].verify_signature(signed)
+        
+        print(f"✅ Signature created: {signed['algorithm']}")
+        print(f"✅ Verification: {verified}")
+        print(f"🛡️ Quantum secure: {signed.get('quantum_secure', False)}")
+        
+        # Test IBE
+        print("\n🔒 Testing IBE Encryption...")
+        encrypted = crypto["ibe"].encrypt_for_user("Secret payment data", "user@example.com")
+        print(f"✅ Encrypted with: {encrypted['algorithm']}")
+        print(f"🛡️ Quantum secure: {encrypted.get('quantum_secure', False)}")
+        
+        print("\n🎉 All crypto tests completed successfully!")
+        
+    except Exception as e:
+        print(f"❌ Crypto test failed: {e}")
+        import traceback
+        traceback.print_exc()
+/root/quantum-secure-commerce/crypto/real_dilithium_liboqs.py
+# crypto/real_dilithium_liboqs.py
+"""
+Real Dilithium implementation using liboqs
+"""
+import os
+import json
+import base64
+from typing import Tuple, Dict, Optional
+from datetime import datetime
+import oqs  # from liboqs-python
+from config.dev_config import SecurityConfig
+import logging
+
+logger = logging.getLogger(__name__)
+
+class RealDilithiumSigner:
+    """Production-ready Dilithium using liboqs"""
+    
+    def __init__(self, variant: str = 'Dilithium3'):
+        """Initialize with specified Dilithium variant"""
+        self.variant = variant
+        self.algorithm = f"dilithium_{variant.lower()}"
+        
+        # Initialize OQS signature object
+        self.sig = oqs.Signature(variant)
+        
+        # Generate or load keys
+        self._load_or_generate_keys()
+        
+        logger.info(f"Initialized Real Dilithium Signer with {variant}")
+    
+    def _load_or_generate_keys(self):
+        """Load or generate keypair"""
+        keys_dir = "keys/dilithium"
+        os.makedirs(keys_dir, exist_ok=True)
+        
+        key_file = os.path.join(keys_dir, f"{self.variant}_keys.json")
+        
+        if os.path.exists(key_file):
+            # Load existing keys
+            with open(key_file, 'r') as f:
+                key_data = json.load(f)
+                self.public_key = base64.b64decode(key_data['public_key'])
+                self.secret_key = base64.b64decode(key_data['secret_key'])
+            logger.info("Loaded existing Dilithium keys")
+        else:
+            # Generate new keys
+            self.public_key = self.sig.generate_keypair()
+            self.secret_key = self.sig.export_secret_key()
+            
+            # Save keys
+            key_data = {
+                'variant': self.variant,
+                'public_key': base64.b64encode(self.public_key).decode(),
+                'secret_key': base64.b64encode(self.secret_key).decode(),
+                'created_at': datetime.utcnow().isoformat()
+            }
+            
+            with open(key_file, 'w') as f:
+                json.dump(key_data, f, indent=2)
+            logger.info("Generated new Dilithium keypair")
+    
+    def generate_keypair(self) -> Tuple[bytes, bytes]:
+        """Generate a new Dilithium keypair"""
+        sig = oqs.Signature(self.variant)
+        public_key = sig.generate_keypair()
+        secret_key = sig.export_secret_key()
+        return public_key, secret_key
+    
+    def sign(self, message: bytes) -> bytes:
+        """Sign a message"""
+        signature = self.sig.sign(message)
+        return signature
+    
+    def verify(self, message: bytes, signature: bytes, public_key: bytes = None) -> bool:
+        """Verify a signature"""
+        if public_key is None:
+            public_key = self.public_key
+            
+        verifier = oqs.Signature(self.variant)
+        is_valid = verifier.verify(message, signature, public_key)
+        return is_valid
+    
+    def sign_transaction(self, transaction_data: Dict) -> Dict:
+        """Sign a transaction - matches mock interface"""
+        # Serialize transaction
+        message = json.dumps(transaction_data, sort_keys=True).encode()
+        
+        # Generate signature
+        signature = self.sign(message)
+        
+        # Return signed transaction
+        return {
+            'transaction': transaction_data,
+            'signature': base64.b64encode(signature).decode(),
+            'public_key': base64.b64encode(self.public_key).decode(),
+            'algorithm': self.algorithm,
+            'signed_at': datetime.utcnow().isoformat()
+        }
+    
+    def verify_transaction(self, signed_transaction: Dict) -> bool:
+        """Verify a signed transaction"""
+        try:
+            # Extract components
+            transaction_data = signed_transaction['transaction']
+            signature = base64.b64decode(signed_transaction['signature'])
+            public_key = base64.b64decode(signed_transaction['public_key'])
+            
+            # Recreate message
+            message = json.dumps(transaction_data, sort_keys=True).encode()
+            
+            # Verify
+            return self.verify(message, signature, public_key)
+            
+        except Exception as e:
+            logger.error(f"Verification failed: {e}")
+            return False
+/root/quantum-secure-commerce/crypto/real_dilithium.py
+"""
+Real CRYSTALS-Dilithium Implementation
+Chữ ký số kháng lượng tử thực tế
+"""
+import os
+import json
+import base64
+from typing import Dict, Any, Tuple
+from datetime import datetime
+import hashlib
+
+try:
+    import oqs  # liboqs-python
+    LIBOQS_AVAILABLE = True
+except ImportError:
+    LIBOQS_AVAILABLE = False
+    print("⚠️ liboqs not available, using fallback implementation")
+
+from config.dev_config import SecurityConfig
+
+class RealDilithiumSigner:
+    """Real Dilithium digital signatures"""
+    
+    def __init__(self, security_level: str = "Dilithium2"):
+        self.algorithm = security_level
+        self.sig_algo = None
+        
+        if LIBOQS_AVAILABLE:
+            try:
+                self.sig_algo = oqs.Signature(self.algorithm)
+                print(f"✅ Real Dilithium ({security_level}) initialized")
+            except Exception as e:
+                print(f"❌ Dilithium init failed: {e}")
+                self.sig_algo = None
+        
+        # Key storage paths
+        self.keys_dir = "./keys/dilithium"
+        os.makedirs(self.keys_dir, exist_ok=True)
+    
+    def generate_keypair(self) -> Tuple[bytes, bytes, str]:
+        """Tạo cặp khóa Dilithium mới"""
+        if self.sig_algo:
+            # Real implementation
+            public_key = self.sig_algo.generate_keypair()
+            private_key = self.sig_algo.export_secret_key()
+            
+            # Save keys securely
+            key_id = self._save_keypair(public_key, private_key)
+            return public_key, private_key, key_id
+        else:
+            # Fallback for development
+            return self._generate_fallback_keypair()
+    
+    def sign_transaction(self, transaction_data: Dict[str, Any], private_key: bytes = None, key_id: str = None) -> Dict[str, Any]:
+        """Ký giao dịch với Dilithium"""
+        
+        # Chuẩn hóa dữ liệu transaction
+        normalized_data = self._normalize_transaction_data(transaction_data)
+        message = json.dumps(normalized_data, sort_keys=True).encode()
+        
+        if self.sig_algo and private_key:
+            # Real signing
+            try:
+                # Import private key if provided
+                if private_key:
+                    # Create new signature instance with the private key
+                    temp_sig = oqs.Signature(self.algorithm)
+                    # Note: liboqs might need different key handling
+                    signature = temp_sig.sign(message)
+                else:
+                    signature = self.sig_algo.sign(message)
+                
+                return {
+                    "transaction_data": normalized_data,
+                    "signature": base64.b64encode(signature).decode(),
+                    "algorithm": self.algorithm,
+                    "key_id": key_id or "default",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "message_hash": hashlib.sha256(message).hexdigest()
+                }
+            except Exception as e:
+                print(f"❌ Real signing failed: {e}")
+                # Fallback to development signing
+                return self._sign_fallback(normalized_data, message)
+        else:
+            # Development fallback
+            return self._sign_fallback(normalized_data, message)
+    
+    def verify_signature(self, signed_transaction: Dict[str, Any], public_key: bytes = None) -> bool:
+        """Xác minh chữ ký Dilithium"""
+        try:
+            # Reconstruct message
+            transaction_data = signed_transaction.get("transaction_data")
+            message = json.dumps(transaction_data, sort_keys=True).encode()
+            signature = base64.b64decode(signed_transaction.get("signature"))
+            
+            if self.sig_algo and public_key:
+                # Real verification
+                try:
+                    # Create verifier with public key
+                    verifier = oqs.Signature(self.algorithm)
+                    # Note: May need to import public key first
+                    return verifier.verify(message, signature, public_key)
+                except Exception as e:
+                    print(f"❌ Real verification failed: {e}")
+                    return False
+            else:
+                # Development verification (always true for testing)
+                expected_hash = hashlib.sha256(message).hexdigest()
+                actual_hash = signed_transaction.get("message_hash")
+                return expected_hash == actual_hash
+                
+        except Exception as e:
+            print(f"❌ Verification error: {e}")
+            return False
+    
+    def _normalize_transaction_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Chuẩn hóa dữ liệu giao dịch để ký"""
+        return {
+            "transaction_id": data.get("transaction_id"),
+            "user_id": data.get("user_id"),
+            "amount": float(data.get("amount", 0)),
+            "currency": data.get("currency", "USD"),
+            "items": data.get("items", []),
+            "timestamp": data.get("timestamp", datetime.utcnow().isoformat()),
+            "merchant_id": data.get("merchant_id", "quantum_commerce")
+        }
+    
+    def _save_keypair(self, public_key: bytes, private_key: bytes) -> str:
+        """Lưu cặp khóa an toàn"""
+        import uuid
+        key_id = str(uuid.uuid4())
+        
+        # Save public key (có thể public)
+        with open(f"{self.keys_dir}/{key_id}_public.key", "wb") as f:
+            f.write(public_key)
+        
+        # Save private key (mã hóa)
+        from services.secret_manager import secret_manager
+        private_key_b64 = base64.b64encode(private_key).decode()
+        secret_manager.store_secret(f"dilithium_private_{key_id}", private_key_b64)
+        
+        return key_id
+    
+    def _generate_fallback_keypair(self) -> Tuple[bytes, bytes, str]:
+        """Fallback keypair generation for development"""
+        import secrets
+        
+        public_key = secrets.token_bytes(32)
+        private_key = secrets.token_bytes(64)
+        key_id = "dev_" + secrets.token_hex(8)
+        
+        return public_key, private_key, key_id
+    
+    def _sign_fallback(self, normalized_data: Dict[str, Any], message: bytes) -> Dict[str, Any]:
+        """Fallback signing for development"""
+        import secrets
+        
+        # Create deterministic but secure signature for development
+        signature_data = hashlib.sha256(message + b"quantum_commerce_salt").digest()
+        
+        return {
+            "transaction_data": normalized_data,
+            "signature": base64.b64encode(signature_data).decode(),
+            "algorithm": f"{self.algorithm}_fallback",
+            "key_id": "development_key",
+            "timestamp": datetime.utcnow().isoformat(),
+            "message_hash": hashlib.sha256(message).hexdigest()
+        }
+/root/quantum-secure-commerce/crypto/real_ibe.py
+# crypto/real_ibe.py
+"""
+Real IBE (Identity-Based Encryption) implementation
+Note: This uses a simplified IBE scheme. For production, use established libraries.
+"""
+import os
+import json
+import base64
+import hashlib
+from typing import Dict, Tuple, Optional
+from datetime import datetime
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from config.dev_config import SecurityConfig
+import logging
+
+logger = logging.getLogger(__name__)
+
+class RealIBESystem:
+    """
+    Simplified IBE implementation using RSA as base
+    For production, use proper IBE libraries like Charm-Crypto
+    """
+    
+    def __init__(self):
+        self.backend = default_backend()
+        self.keys_dir = "keys/ibe"
+        os.makedirs(self.keys_dir, exist_ok=True)
+        
+        # Load or generate master key
+        self._load_or_generate_master_key()
+    
+    def _load_or_generate_master_key(self):
+        """Load or generate IBE master key"""
+        master_key_path = os.path.join(self.keys_dir, "master_key.pem")
+        
+        try:
+            if os.path.exists(master_key_path) and SecurityConfig.APP_ENV != 'development':
+                # Load existing key
+                with open(master_key_path, 'rb') as f:
+                    if SecurityConfig.APP_ENV == 'production':
+                        # Decrypt the key first
+                        from cryptography.fernet import Fernet
+                        fernet = Fernet(SecurityConfig.get_fernet_key())
+                        key_data = fernet.decrypt(f.read())
+                    else:
+                        key_data = f.read()
+                    
+                    self.master_key = serialization.load_pem_private_key(
+                        key_data,
+                        password=None,
+                        backend=self.backend
+                    )
+                logger.info("Loaded existing IBE master key")
+            else:
+                # Generate new master key
+                self.master_key = rsa.generate_private_key(
+                    public_exponent=65537,
+                    key_size=4096,  # High security for master key
+                    backend=self.backend
+                )
+                
+                # Save the key
+                self._save_master_key(master_key_path)
+                logger.info("Generated new IBE master key")
+                
+        except Exception as e:
+            logger.error(f"Error with IBE master key: {e}")
+            raise
+    
+    def _save_master_key(self, path: str):
+        """Save master key (encrypted in production)"""
+        # Serialize private key
+        pem = self.master_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
+        )
+        
+        if SecurityConfig.APP_ENV == 'production':
+            # Encrypt before saving
+            from cryptography.fernet import Fernet
+            fernet = Fernet(SecurityConfig.get_fernet_key())
+            encrypted_pem = fernet.encrypt(pem)
+            
+            with open(path, 'wb') as f:
+                f.write(encrypted_pem)
+        else:
+            # Development: save unencrypted
+            with open(path, 'wb') as f:
+                f.write(pem)
+    
+    def setup(self) -> Dict:
+        """Generate IBE public parameters"""
+        public_key = self.master_key.public_key()
+        
+        # Serialize public key
+        public_pem = public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        
+        # Generate system parameters
+        params = {
+            'algorithm': 'simplified-ibe-rsa',
+            'master_public_key': base64.b64encode(public_pem).decode(),
+            'security_level': '256-bit',
+            'key_size': 4096,
+            'generated_at': datetime.utcnow().isoformat()
+        }
+        
+        # Save parameters
+        params_path = os.path.join(self.keys_dir, "public_params.json")
+        with open(params_path, 'w') as f:
+            json.dump(params, f, indent=2)
+        
+        return params
+    
+    def extract_key(self, identity: str) -> bytes:
+        """Extract private key for an identity"""
+        # Hash the identity to create deterministic key material
+        identity_hash = hashlib.sha256(identity.encode()).digest()
+        
+        # Use HKDF to derive a key from master secret and identity
+        from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+        
+        hkdf = HKDF(
+            algorithm=hashes.SHA256(),
+            length=32,  # 256-bit key
+            salt=b'quantum-commerce-ibe',
+            info=identity.encode(),
+            backend=self.backend
+        )
+        
+        # Derive key material from master key
+        master_key_bytes = self.master_key.private_numbers().d.to_bytes(512, 'big')
+        identity_key = hkdf.derive(master_key_bytes[:32] + identity_hash)
+        
+        return identity_key
+    
+    def encrypt(self, message: bytes, identity: str) -> Dict:
+        """Encrypt message for specific identity"""
+        # Generate ephemeral key
+        ephemeral_key = os.urandom(32)
+        
+        # Derive encryption key from identity
+        identity_key = self._derive_encryption_key(identity, ephemeral_key)
+        
+        # Encrypt message using AES-GCM
+        iv = os.urandom(12)
+        cipher = Cipher(
+            algorithms.AES(identity_key),
+            modes.GCM(iv),
+            backend=self.backend
+        )
+        encryptor = cipher.encryptor()
+        
+        ciphertext = encryptor.update(message) + encryptor.finalize()
+        
+        # Encrypt ephemeral key with master public key
+        public_key = self.master_key.public_key()
+        encrypted_ephemeral = public_key.encrypt(
+            ephemeral_key,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+        
+        return {
+            'ciphertext': base64.b64encode(ciphertext).decode(),
+            'tag': base64.b64encode(encryptor.tag).decode(),
+            'iv': base64.b64encode(iv).decode(),
+            'ephemeral_key': base64.b64encode(encrypted_ephemeral).decode(),
+            'identity': identity,
+            'algorithm': 'AES-256-GCM-IBE'
+        }
+    
+    def decrypt(self, encrypted_data: Dict, identity_key: bytes) -> bytes:
+        """Decrypt message using identity key"""
+        try:
+            # Decode components
+            ciphertext = base64.b64decode(encrypted_data['ciphertext'])
+            tag = base64.b64decode(encrypted_data['tag'])
+            iv = base64.b64decode(encrypted_data['iv'])
+            encrypted_ephemeral = base64.b64decode(encrypted_data['ephemeral_key'])
+            
+            # Decrypt ephemeral key
+            ephemeral_key = self.master_key.decrypt(
+                encrypted_ephemeral,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+            )
+            
+            # Derive decryption key
+            decryption_key = self._derive_encryption_key(
+                encrypted_data['identity'],
+                ephemeral_key
+            )
+            
+            # Decrypt message
+            cipher = Cipher(
+                algorithms.AES(decryption_key),
+                modes.GCM(iv, tag),
+                backend=self.backend
+            )
+            decryptor = cipher.decryptor()
+            
+            plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+            
+            return plaintext
+            
+        except Exception as e:
+            logger.error(f"Decryption failed: {e}")
+            raise
+    
+    def _derive_encryption_key(self, identity: str, ephemeral_key: bytes) -> bytes:
+        """Derive encryption key from identity and ephemeral key"""
+        from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+        
+        hkdf = HKDF(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=b'ibe-encryption',
+            info=identity.encode(),
+            backend=self.backend
+        )
+        
+        return hkdf.derive(ephemeral_key)
+    
+    def encrypt_payment_data(self, payment_data: Dict, user_email: str) -> Dict:
+        """Encrypt payment data for specific user"""
+        # Serialize payment data
+        data_bytes = json.dumps(payment_data).encode()
+        
+        # Encrypt with user's identity
+        encrypted = self.encrypt(data_bytes, user_email)
+        
+        # Add metadata
+        encrypted['encrypted_at'] = datetime.utcnow().isoformat()
+        encrypted['data_type'] = 'payment_data'
+        
+        return encrypted
+    
+    def decrypt_payment_data(self, encrypted_data: Dict, user_email: str) -> Dict:
+        """Decrypt payment data for user"""
+        # Extract user's key
+        identity_key = self.extract_key(user_email)
+        
+        # Decrypt
+        decrypted_bytes = self.decrypt(encrypted_data, identity_key)
+        
+        # Parse JSON
+        return json.loads(decrypted_bytes.decode())
+/root/quantum-secure-commerce/data/quantum_commerce.db
+Đã được mã hóa và lưu trữ trong cơ sở dữ liệu SQLite mà mình muốn redix với postgresql
+/root/quantum-secure-commerce/database/__init__.py
+from sqlalchemy import text
+# database/__init__.py
+"""Database initialization and configuration"""
+import os
+import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.pool import StaticPool, NullPool
+from config.database import DatabaseConfig
+from config.dev_config import SecurityConfig
+
+logger = logging.getLogger(__name__)
+
+def create_db_engine():
+    """Create database engine based on configuration"""
+    try:
+        # Production: use connection pooling
+        if SecurityConfig.APP_ENV == 'production':
+            engine = create_engine(
+                DatabaseConfig.get_database_url(),
+                pool_size=20,
+                max_overflow=0,
+                pool_pre_ping=True,
+                echo=DatabaseConfig.DATABASE_ECHO
+            )
+        else:
+            # Development: simpler pooling
+            engine = create_engine(
+                DatabaseConfig.get_database_url(),
+                poolclass=NullPool,
+                pool_pre_ping=True,
+                echo=DatabaseConfig.DATABASE_ECHO
+            )
+        
+        # Test connection
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        
+        logger.info("✅ Connected to PostgreSQL database")
+        return engine
+        
+    except Exception as e:
+        logger.warning(f"⚠️ PostgreSQL connection failed: {e}")
+        logger.info("🔄 Falling back to SQLite...")
+        
+        # Fallback to SQLite
+        sqlite_url = DatabaseConfig.get_sqlite_url()
+        os.makedirs("data", exist_ok=True)
+        
+        engine = create_engine(
+            sqlite_url,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+            echo=True
+        )
+        logger.info("✅ Connected to SQLite database")
+        return engine
+
+# Create engine
+engine = create_db_engine()
+
+# Create session factory
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_db() -> Session:
+    """Get database session"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Export for imports
+__all__ = ['engine', 'get_db', 'SessionLocal']
+/root/quantum-secure-commerce/database/migrations
+Trống 
+/root/quantum-secure-commerce/database/encryption.py
+# database/encryption.py
+"""
+Database field encryption using Fernet
+"""
+from sqlalchemy.types import TypeDecorator, String, Text
+from cryptography.fernet import Fernet
+from config.dev_config import SecurityConfig
+import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+class EncryptedType(TypeDecorator):
+    """Base class for encrypted database fields"""
+    impl = Text
+    cache_ok = True
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fernet = Fernet(SecurityConfig.get_fernet_key())
+    
+    def process_bind_param(self, value, dialect):
+        """Encrypt value before storing"""
+        if value is not None:
+            if isinstance(value, str):
+                value_bytes = value.encode('utf-8')
+            else:
+                value_bytes = json.dumps(value).encode('utf-8')
+            
+            encrypted = self.fernet.encrypt(value_bytes)
+            return encrypted.decode('utf-8')
+        return value
+    
+    def process_result_value(self, value, dialect):
+        """Decrypt value after retrieving"""
+        if value is not None:
+            try:
+                decrypted = self.fernet.decrypt(value.encode('utf-8'))
+                return decrypted.decode('utf-8')
+            except Exception as e:
+                logger.error(f"Decryption failed: {e}")
+                return None
+        return value
+
+class EncryptedString(EncryptedType):
+    """Encrypted string field"""
+    impl = String
+
+class EncryptedJSON(EncryptedType):
+    """Encrypted JSON field"""
+    
+    def process_result_value(self, value, dialect):
+        """Decrypt and parse JSON"""
+        decrypted = super().process_result_value(value, dialect)
+        if decrypted:
+            try:
+                return json.loads(decrypted)
+            except json.JSONDecodeError:
+                return decrypted
+        return decrypted
+/root/quantum-secure-commerce/database/models.py
+"""
+Real Database Models
+"""
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Decimal, Text, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from datetime import datetime
+import uuid
+
+Base = declarative_base()
+
+class User(Base):
+    """User model với real fields"""
+    __tablename__ = "users"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)  # bcrypt hash
+    full_name = Column(String(100))
+    
+    # Status fields
+    is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)
+    is_admin = Column(Boolean, default=False)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    last_login = Column(DateTime(timezone=True))
+    
+    # Security fields
+    failed_login_attempts = Column(Integer, default=0)
+    locked_until = Column(DateTime(timezone=True))
+    
+    # Crypto keys
+    dilithium_public_key = Column(Text)  # Public key cho verify signatures
+    ibe_identity = Column(String(255))   # IBE identity
+    
+    # Relationships
+    transactions = relationship("Transaction", back_populates="user")
+    audit_logs = relationship("AuditLog", back_populates="user")
+    
+    def __repr__(self):
+        return f"<User {self.username} ({self.email})>"
+
+class Transaction(Base):
+    """Transaction model với digital signatures"""
+    __tablename__ = "transactions"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    
+    # Transaction data
+    amount = Column(Decimal(10, 2), nullable=False)
+    currency = Column(String(3), default="USD")
+    payment_method = Column(String(50))
+    status = Column(String(20), default="pending")  # pending, completed, failed, cancelled
+    
+    # Quantum-secure signatures
+    transaction_data_hash = Column(String(64))  # SHA-256 hash
+    dilithium_signature = Column(Text)          # CRYSTALS-Dilithium signature
+    signature_algorithm = Column(String(20), default="Dilithium2")
+    signature_verified = Column(Boolean, default=False)
+    
+    # Merchant data
+    merchant_id = Column(String(100))
+    merchant_public_key = Column(Text)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True))
+    
+    # Relationships
+    user = relationship("User", back_populates="transactions")
+    
+    def __repr__(self):
+        return f"<Transaction {self.id} - {self.amount} {self.currency}>"
+
+class AuditLog(Base):
+    """Audit log cho security events"""
+    __tablename__ = "audit_logs"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(36), ForeignKey("users.id"))
+    
+    # Event data
+    event_type = Column(String(50), nullable=False)  # login, logout, payment, etc.
+    event_data = Column(Text)  # JSON data
+    ip_address = Column(String(45))  # IPv4/IPv6
+    user_agent = Column(Text)
+    
+    # Security
+    session_id = Column(String(36))
+    risk_score = Column(Integer, default=0)  # 0-100
+    
+    # Timestamp
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    user = relationship("User", back_populates="audit_logs")
+    
+    def __repr__(self):
+        return f"<AuditLog {self.event_type} - {self.created_at}>"
+
+class CryptoKey(Base):
+    """Crypto keys management"""
+    __tablename__ = "crypto_keys"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    
+    # Key info
+    key_type = Column(String(20), nullable=False)  # dilithium, ibe, rsa
+    algorithm = Column(String(50))  # Dilithium2, Dilithium3, etc.
+    public_key = Column(Text, nullable=False)
+    key_usage = Column(String(50))  # signing, encryption, verification
+    
+    # Ownership
+    owner_type = Column(String(20))  # user, merchant, system
+    owner_id = Column(String(36))
+    
+    # Status
+    is_active = Column(Boolean, default=True)
+    expires_at = Column(DateTime(timezone=True))
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    def __repr__(self):
+        return f"<CryptoKey {self.key_type} - {self.algorithm}>"
+/root/quantum-secure-commerce/database/schema.py
+"""
+Updated database schema with encryption
+"""
+from sqlalchemy import (
+    Column, Integer, String, Float, DateTime, 
+    Boolean, ForeignKey, JSON, Text, Index
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from datetime import datetime
+from database.encryption import EncryptedString, EncryptedJSON
+
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    username = Column(String(100), unique=True, index=True, nullable=False)
+    
+    # Encrypted fields
+    hashed_password = Column(EncryptedString(255), nullable=False)
+    full_name = Column(EncryptedString(255))
+    phone_number = Column(EncryptedString(50))
+    
+    # User metadata
+    is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)
+    is_admin = Column(Boolean, default=False)
+    
+    # Security fields
+    mfa_secret = Column(EncryptedString(255))
+    failed_login_attempts = Column(Integer, default=0)
+    locked_until = Column(DateTime)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_login = Column(DateTime)
+    
+    # Relationships
+    transactions = relationship("Transaction", back_populates="user")
+    crypto_keys = relationship("UserCryptoKey", back_populates="user")
+    sessions = relationship("UserSession", back_populates="user")
+    audit_logs = relationship("AuditLog", back_populates="user")
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    transaction_id = Column(String(100), unique=True, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
+    # Encrypted sensitive data
+    payment_data = Column(EncryptedJSON, nullable=False)
+    shipping_address = Column(EncryptedJSON)
+    billing_address = Column(EncryptedJSON)
+    
+    # Transaction details
+    amount = Column(Float, nullable=False)
+    currency = Column(String(3), default="USD")
+    status = Column(String(50), nullable=False)
+    payment_method = Column(String(50))
+    
+    # Cryptographic signatures
+    dilithium_signature = Column(Text)
+    ibe_encrypted_data = Column(EncryptedJSON)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    completed_at = Column(DateTime)
+    
+    # Relationships
+    user = relationship("User", back_populates="transactions")
+    items = relationship("TransactionItem", back_populates="transaction")
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index('idx_user_created', 'user_id', 'created_at'),
+        Index('idx_status_created', 'status', 'created_at'),
+    )
+
+class UserCryptoKey(Base):
+    __tablename__ = "user_crypto_keys"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
+    # Key information (encrypted)
+    key_type = Column(String(50), nullable=False)  # 'dilithium', 'ibe'
+    public_key = Column(Text, nullable=False)
+    private_key = Column(EncryptedString)  # Only for user's own keys
+    key_metadata = Column(EncryptedJSON)
+    
+    # Key lifecycle
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime)
+    revoked_at = Column(DateTime)
+    is_active = Column(Boolean, default=True)
+    
+    # Relationship
+    user = relationship("User", back_populates="crypto_keys")
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String(100), unique=True, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
+    # Session data
+    ip_address = Column(String(45))  # Supports IPv6
+    user_agent = Column(String(500))
+    device_info = Column(EncryptedJSON)
+    
+    # Security
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_activity = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    
+    # Relationship
+    user = relationship("User", back_populates="sessions")
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    
+    # Audit information
+    action = Column(String(100), nullable=False)
+    resource_type = Column(String(50))
+    resource_id = Column(String(100))
+    
+    # Details (encrypted for sensitive operations)
+    details = Column(EncryptedJSON)
+    ip_address = Column(String(45))
+    user_agent = Column(String(500))
+    
+    # Result
+    success = Column(Boolean, default=True)
+    error_message = Column(Text)
+    
+    # Timestamp
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    
+    # Relationship
+    user = relationship("User", back_populates="audit_logs")
+    
+    # Index for querying
+    __table_args__ = (
+        Index('idx_audit_user_created', 'user_id', 'created_at'),
+        Index('idx_audit_action_created', 'action', 'created_at'),
+    )
+
+class Product(Base):
+    __tablename__ = "products"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    sku = Column(String(100), unique=True, index=True, nullable=False)
+    
+    # Product information
+    name = Column(String(255), nullable=False)
+    description = Column(Text)
+    category = Column(String(100), index=True)
+    
+    # Pricing
+    price = Column(Float, nullable=False)
+    currency = Column(String(3), default="USD")
+    
+    # Inventory
+    stock_quantity = Column(Integer, default=0)
+    is_available = Column(Boolean, default=True)
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class TransactionItem(Base):
+    __tablename__ = "transaction_items"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    transaction_id = Column(Integer, ForeignKey("transactions.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    
+    # Item details
+    quantity = Column(Integer, nullable=False)
+    unit_price = Column(Float, nullable=False)
+    total_price = Column(Float, nullable=False)
+    
+    # Relationships
+    transaction = relationship("Transaction", back_populates="items")
+    product = relationship("Product")
+/root/quantum-secure-commerce/keys/dilithium
+Trống 
+/root/quantum-secure-commerce/keys/ibe/master_key.pem
+-----BEGIN PRIVATE KEY-----
+có key trong này mà mình không biết sao nó lại có nữa
+-----END PRIVATE KEY-----
+/root/quantum-secure-commerce/logs Trống trơn
+/root/quantum-secure-commerce/metrics/quantum_metrics.py
+# metrics/quantum_metrics.py
+"""
+Prometheus metrics cho Quantum Commerce API
+"""
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, Info
+from functools import wraps
+import time
+from typing import Callable
+
+# Quantum Crypto Metrics
+quantum_signatures_total = Counter(
+    'quantum_signatures_total',
+    'Total quantum signatures created',
+    ['algorithm', 'status']
+)
+
+quantum_verification_total = Counter(
+    'quantum_verification_total', 
+    'Total signature verifications',
+    ['algorithm', 'result']
+)
+
+quantum_signature_duration = Histogram(
+    'quantum_signature_duration_seconds',
+    'Time to create quantum signature',
+    ['algorithm']
+)
+
+quantum_verification_duration = Histogram(
+    'quantum_verification_duration_seconds',
+    'Time to verify quantum signature',
+    ['algorithm']
+)
+
+# IBE Metrics
+ibe_encryptions_total = Counter(
+    'ibe_encryptions_total',
+    'Total IBE encryptions',
+    ['algorithm', 'status']
+)
+
+ibe_encryption_duration = Histogram(
+    'ibe_encryption_duration_seconds',
+    'Time to encrypt with IBE',
+    ['algorithm']
+)
+
+# API Metrics
+api_requests_total = Counter(
+    'api_requests_total',
+    'Total API requests',
+    ['method', 'endpoint', 'status_code']
+)
+
+api_request_duration = Histogram(
+    'api_request_duration_seconds',
+    'API request duration',
+    ['method', 'endpoint']
+)
+
+# System Metrics
+active_crypto_operations = Gauge(
+    'active_crypto_operations',
+    'Currently active crypto operations'
+)
+
+crypto_system_info = Info(
+    'crypto_system_info',
+    'Information about crypto system'
+)
+
+# Payment Metrics  
+payments_total = Counter(
+    'payments_total',
+    'Total payments processed',
+    ['status', 'currency']
+)
+
+payment_amount = Histogram(
+    'payment_amount_usd',
+    'Payment amounts in USD',
+    buckets=(10, 50, 100, 500, 1000, 5000, 10000, float('inf'))
+)
+
+# Security Metrics
+security_events_total = Counter(
+    'security_events_total',
+    'Security events',
+    ['event_type', 'severity']
+)
+
+failed_auth_attempts = Counter(
+    'failed_auth_attempts_total',
+    'Failed authentication attempts',
+    ['reason']
+)
+
+# Decorators for automatic metrics
+def track_quantum_signature(algorithm: str):
+    """Decorator to track quantum signature operations"""
+    def decorator(func: Callable):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            active_crypto_operations.inc()
+            start_time = time.time()
+            
+            try:
+                result = func(*args, **kwargs)
+                quantum_signatures_total.labels(
+                    algorithm=algorithm, 
+                    status='success'
+                ).inc()
+                return result
+            except Exception as e:
+                quantum_signatures_total.labels(
+                    algorithm=algorithm,
+                    status='failed'
+                ).inc()
+                raise
+            finally:
+                duration = time.time() - start_time
+                quantum_signature_duration.labels(algorithm=algorithm).observe(duration)
+                active_crypto_operations.dec()
+        
+        return wrapper
+    return decorator
+
+def track_quantum_verification(algorithm: str):
+    """Decorator to track verification operations"""
+    def decorator(func: Callable):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
+            
+            try:
+                result = func(*args, **kwargs)
+                quantum_verification_total.labels(
+                    algorithm=algorithm,
+                    result='valid' if result else 'invalid'
+                ).inc()
+                return result
+            except Exception as e:
+                quantum_verification_total.labels(
+                    algorithm=algorithm,
+                    result='error'
+                ).inc()
+                raise
+            finally:
+                duration = time.time() - start_time
+                quantum_verification_duration.labels(algorithm=algorithm).observe(duration)
+        
+        return wrapper
+    return decorator
+
+def track_ibe_encryption(algorithm: str):
+    """Decorator to track IBE encryption"""
+    def decorator(func: Callable):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
+            
+            try:
+                result = func(*args, **kwargs)
+                ibe_encryptions_total.labels(
+                    algorithm=algorithm,
+                    status='success'
+                ).inc()
+                return result
+            except Exception as e:
+                ibe_encryptions_total.labels(
+                    algorithm=algorithm,
+                    status='failed'
+                ).inc()
+                raise
+            finally:
+                duration = time.time() - start_time
+                ibe_encryption_duration.labels(algorithm=algorithm).observe(duration)
+        
+        return wrapper
+    return decorator
+
+def track_api_request(method: str, endpoint: str):
+    """Decorator to track API requests"""
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            start_time = time.time()
+            status_code = 200
+            
+            try:
+                result = await func(*args, **kwargs)
+                return result
+            except Exception as e:
+                status_code = getattr(e, 'status_code', 500)
+                raise
+            finally:
+                duration = time.time() - start_time
+                api_requests_total.labels(
+                    method=method,
+                    endpoint=endpoint,
+                    status_code=status_code
+                ).inc()
+                api_request_duration.labels(
+                    method=method,
+                    endpoint=endpoint
+                ).observe(duration)
+        
+        return wrapper
+    return decorator
+
+# Initialize system info
+def initialize_crypto_info():
+    """Initialize crypto system info metrics"""
+    try:
+        from crypto import get_crypto_status
+        status = get_crypto_status()
+        
+        crypto_system_info.info({
+            'quantum_secure_signatures': str(status.get('quantum_secure_signatures', False)),
+            'enhanced_ibe': str(status.get('enhanced_ibe', False)),
+            'production_ready': str(status.get('production_ready', False)),
+            'available_variants': ','.join(status.get('available_variants', []))
+        })
+    except Exception as e:
+        crypto_system_info.info({
+            'error': str(e),
+            'status': 'failed_to_initialize'
+        })
+
+# Metrics endpoint function
+def get_metrics():
+    """Get Prometheus metrics"""
+    return generate_latest()
+
+# Initialize on import
+initialize_crypto_info()

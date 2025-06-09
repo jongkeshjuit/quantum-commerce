@@ -8,10 +8,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy import create_engine
 from database.schema import Base
 
-# Database URL
+# FIXED: Sử dụng password đúng từ .env
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://qsc_user:secure_password@localhost:5432/quantum_commerce"
+    "postgresql://quantum_user:quantum_secure_pass_123@localhost:5432/quantum_commerce"
 )
 
 def create_tables():

@@ -1,3 +1,4 @@
+from sqlalchemy import text
 # database/__init__.py
 """Database initialization and configuration"""
 import os
@@ -33,7 +34,7 @@ def create_db_engine():
         
         # Test connection
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         
         logger.info("✅ Connected to PostgreSQL database")
         return engine

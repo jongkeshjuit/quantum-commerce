@@ -225,15 +225,23 @@ async def health_check():
         "crypto_mode": "real" if USE_REAL_CRYPTO else "mock"
     }
 
-# Authentication Endpoints
+users_storage = {}
+
 @app.post("/api/auth/register")
 async def register(
     request: RegisterRequest,
     req: Request,
     db: Session = Depends(get_db)
 ):
-    """User registration with password validation"""
+    """User registration with real storage"""
     logger.info(f"Registration attempt: {request.email}")
+    
+    # Check if user already exists
+    if request.email in users_storage:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
     
     # Validate password strength
     if not auth_service.validate_password_strength(request.password):
@@ -251,11 +259,23 @@ async def register(
         "email": request.email,
         "username": request.username,
         "full_name": request.full_name,
-        "is_admin": False
+        "password_hash": password_hash,  # ← LUU PASSWORD HASH
+        "is_admin": False,
+        "created_at": datetime.utcnow().isoformat()
     }
     
-    # Create access token
-    access_token = auth_service.create_access_token(user_data)
+    # Store user in memory
+    users_storage[request.email] = user_data
+    
+    # Create access token (không gồm password)
+    token_data = {
+        "user_id": user_data["id"],
+        "sub": user_data["email"],
+        "email": user_data["email"],
+        "username": user_data["username"],
+        "is_admin": user_data["is_admin"]
+    }
+    access_token = auth_service.create_access_token(token_data)
     
     logger.info(f"✅ User registered: {request.email}")
     
@@ -263,7 +283,7 @@ async def register(
         "message": "Registration successful",
         "access_token": access_token,
         "token_type": "bearer",
-        "user": user_data
+        "user": token_data  # Không trả password
     }
 
 @app.post("/api/auth/login") 
@@ -272,30 +292,59 @@ async def login(
     req: Request,
     db: Session = Depends(get_db)
 ):
-    """User login with credential validation"""
+    """User login with REAL credential validation"""
     logger.info(f"Login attempt: {request.email}")
     
-    # Demo authentication - in production use database
-    if request.email == "demo@example.com" and request.password == "password123":
-        user_data = {
-            "id": "demo_user_123",
-            "email": request.email,
-            "username": "demo_user",
-            "is_admin": False
-        }
-        
-        access_token = auth_service.create_access_token(user_data)
-        
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "user": user_data
-        }
-    else:
+    # Check if user exists
+    if request.email not in users_storage:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
         )
+    
+    user = users_storage[request.email]
+    
+    # Verify password
+    if not auth_service.verify_password(request.password, user["password_hash"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
+        )
+    
+    # Create token data
+    token_data = {
+        "user_id": user["id"],
+        "sub": user["email"],
+        "email": user["email"],
+        "username": user["username"],
+        "is_admin": user["is_admin"]
+    }
+    
+    access_token = auth_service.create_access_token(token_data)
+    
+    logger.info(f"✅ Login successful: {request.email}")
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": token_data
+    }
+
+# Debug endpoint để xem users đã register
+@app.get("/api/debug/users")
+async def debug_users():
+    """Debug: xem users đã register (DEVELOPMENT ONLY)"""
+    return {
+        "total_users": len(users_storage),
+        "users": [
+            {
+                "email": email,
+                "username": user["username"],
+                "created_at": user["created_at"]
+            }
+            for email, user in users_storage.items()
+        ]
+    }
 
 @app.post("/api/auth/logout")
 async def logout(
@@ -407,69 +456,16 @@ async def get_transactions(current_user: dict = Depends(jwt_bearer)):
     
     return {"transactions": user_transactions}
 
-# Payment Endpoints
-# @app.post("/api/payments/process")
-# async def process_payment(
-#     request: PaymentRequest,
-#     current_user: dict = Depends(jwt_bearer),
-#     db: Session = Depends(get_db)
-# ):
-#     """Process payment with crypto signatures"""
-#     logger.info(f"Processing payment: {request.amount} {request.currency} for user {current_user.get('email')}")
-    
-#     try:
-#         # Create transaction data
-#         transaction_data = {
-#             "id": str(uuid.uuid4()),
-#             "user_id": current_user.get("user_id", current_user.get("id")),
-#             "amount": float(request.amount),
-#             "currency": request.currency,
-#             "payment_method": request.payment_method,
-#             "items": request.items,
-#             "timestamp": datetime.utcnow().isoformat(),
-#             "status": "processing"
-#         }
-        
-#         # Sign transaction with Dilithium
-#         try:
-#             signer = DilithiumSigner()
-#             signed_transaction = signer.sign_transaction(transaction_data)
-#             signature = signed_transaction.get("signature", "mock_signature")
-#         except Exception as e:
-#             logger.warning(f"Crypto signing warning: {e}")
-#             signature = "mock_signature_fallback"
-        
-#         # Encrypt sensitive data with IBE
-#         try:
-#             ibe_system = IBESystem()
-#             encrypted_details = ibe_system.encrypt_for_user(
-#                 str(request.items), 
-#                 current_user.get("email", "demo@example.com")
-#             )
-#         except Exception as e:
-#             logger.warning(f"IBE encryption warning: {e}")
-#             encrypted_details = f"encrypted_fallback_{uuid.uuid4()}"
-        
-#         logger.info(f"✅ Payment processed successfully: {transaction_data['id']}")
-        
-#         return {
-#             "message": "Payment processed successfully",
-#             "transaction_id": transaction_data["id"],
-#             "signature": signature,
-#             "status": "completed",
-#             "encrypted_receipt": encrypted_details,
-#             "user_id": current_user.get("id"),
-#             "amount": request.amount,
-#             "currency": request.currency
-#         }
-        
-#     except Exception as e:
-#         logger.error(f"Payment processing error: {e}")
-#         raise HTTPException(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             detail=f"Payment processing failed: {str(e)}"
-#         )
-# Thêm vào main.py
+@app.get("/api/crypto/status")
+async def crypto_status():
+    """Get crypto system status"""
+    return {
+        "status": "active",
+        "dilithium": {"status": "active", "algorithm": "Dilithium3"},
+        "ibe": {"status": "active", "algorithm": "enhanced_ibe"},
+        "quantum_secure": True
+    }
+
 @app.get("/api/payments/{payment_id}")
 async def get_payment_details(payment_id: str, current_user: dict = Depends(jwt_bearer)):
     return {
@@ -478,22 +474,7 @@ async def get_payment_details(payment_id: str, current_user: dict = Depends(jwt_
         "customer_id": current_user.get("user_id"),
         "timestamp": datetime.utcnow().isoformat()
     }
-# @app.post("/api/payments/verify")
-# async def verify_payment(
-#     request: dict,
-#     current_user: dict = Depends(jwt_bearer),
-#     db: Session = Depends(get_db)
-# ):
-#     """Verify payment signature"""
-#     payment_id = request.get("payment_id") or request.get("transaction_id")
-    
-#     return {
-#         "payment_id": payment_id,
-#         "verified": True,
-#         "quantum_secure": True,
-#         "message": "Payment signature verified successfully",
-#         "algorithm": "Dilithium3"
-#     }
+
 @app.post("/api/payments/verify")
 async def verify_payment(
     request: dict,
@@ -516,6 +497,7 @@ async def verify_payment(
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 @app.get("/api/orders/{order_id}")
 async def get_order_details(
     order_id: str,
@@ -536,38 +518,6 @@ async def get_order_details(
         "quantum_secured": True
     }
 
-# @app.post("/api/transactions/verify")
-# async def verify_transaction_signature(
-#     request: dict,
-#     current_user: dict = Depends(jwt_bearer),
-#     db: Session = Depends(get_db)
-# ):
-#     """Verify transaction signature - alternative endpoint"""
-#     transaction_id = request.get("transaction_id")
-#     signature = request.get("signature")
-    
-#     return {
-#         "transaction_id": transaction_id,
-#         "verified": True,
-#         "message": "Transaction signature verified",
-#         "quantum_secure": True
-#     }
-
-# @app.post("/api/transactions/verify")
-# async def verify_transaction(
-#     request: dict,
-#     current_user: dict = Depends(jwt_bearer),
-#     db: Session = Depends(get_db)
-# ):
-#     """Verify transaction signature"""
-#     transaction_id = request.get("transaction_id")
-#     signature = request.get("signature")
-    
-#     return {
-#         "transaction_id": transaction_id,
-#         "verified": True,
-#         "message": "Transaction signature verified"
-#     }
 @app.post("/api/payments/verify")
 async def verify_payment(
     request: dict,
@@ -598,63 +548,6 @@ async def verify_payment(
     except Exception as e:
         logger.error(f"Verification error: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Verification failed: {str(e)}")
-
-# @app.get("/api/transactions")
-# async def list_transactions(
-#     current_user: dict = Depends(jwt_bearer),
-#     db: Session = Depends(get_db)
-# ):
-#     """List user transactions"""
-#     return {
-#         "transactions": [
-#             {
-#                 "id": "tx_123",
-#                 "amount": 99.99,
-#                 "currency": "USD",
-#                 "status": "completed",
-#                 "created_at": datetime.utcnow().isoformat()
-#             }
-#         ]
-#     }
-# @app.get("/api/transactions")
-# async def get_transactions(current_user: dict = Depends(jwt_bearer)):
-#     """Get user transaction history"""
-#     user_id = current_user.get("user_id", "unknown")
-    
-#     # Mock data với format đúng
-#     transactions = [
-#         {
-#             "id": "d3d9b99d-8e4e-4071-bfcb-bccbecb8ed63",
-#             "order_id": "ORD-001",  # ← Thêm order_id
-#             "date": "2025-06-09T12:24:51Z",
-#             "amount": 215.99,
-#             "currency": "USD", 
-#             "status": "completed",
-#             "customer_id": user_id,
-#             "quantum_secured": True,
-#             "payment_method": "credit_card"
-#         }
-#     ]
-    
-#     return {"transactions": transactions}
-# @app.get("/api/transactions")
-# async def get_transactions(current_user: dict = Depends(jwt_bearer)):
-#     """Get user transaction history"""
-#     user_id = current_user.get("user_id", "unknown")
-    
-#     transactions = [
-#         {
-#             "transaction_id": "431ad4ec-f089-42b7-bd35-8e238e63e2a9",  # ← Đảm bảo có field này
-#             "amount": 971.99,
-#             "currency": "USD", 
-#             "status": "completed",
-#             "timestamp": "2025-06-08T17:36:15Z",
-#             "customer_id": user_id,
-#             "quantum_secured": True
-#         }
-#     ]
-    
-#     return {"transactions": transactions}
 
 @app.get("/api/users/me")
 async def get_current_user(

@@ -60,7 +60,9 @@ export default function Layout() {
                             {/* User Menu */}
                             {user ? (
                                 <div className="flex items-center gap-4">
-                                    <span className="text-gray-400 text-sm">Hi, {user.name}</span>
+                                    <span className="text-gray-400 text-sm">
+                                        Hi, {user.name || user.username || user.email.split('@')[0]}
+                                    </span>
                                     <button
                                         onClick={handleLogout}
                                         className="text-gray-300 hover:text-white transition-colors"

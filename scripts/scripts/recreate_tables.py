@@ -8,7 +8,7 @@ from database.schema import Base
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://qsc_user:secure_password@localhost:5432/quantum_commerce"
+    "postgresql://quantum_user:secure_password@localhost:5432/quantum_commerce"
 )
 
 engine = create_engine(DATABASE_URL)

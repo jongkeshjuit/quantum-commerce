@@ -115,3 +115,181 @@ temp/
 scripts/setup_prodution_secrets.py
 scripts/setup_prodution_secrets.py
 
+
+# SECURITY - NEVER COMMIT THESE!
+secrets/
+.env
+.env.local
+.env.production
+.env.development
+*.key
+*.pem
+master_password.txt
+vault_token.txt
+
+# Crypto keys
+keys/dilithium/
+keys/ibe/
+keys/*.key
+
+# Logs có thể chứa sensitive data
+logs/*.log
+logs/security.log
+
+# Database dumps
+*.sql
+*.db
+
+# Backup files
+*.backup
+*.bak
+temp/
+
+# SECURITY - NEVER COMMIT THESE!
+secrets/
+.env
+.env.local
+.env.production
+.env.development
+*.key
+*.pem
+master_password.txt
+vault_token.txt
+
+# Crypto keys
+keys/dilithium/
+keys/ibe/
+keys/*.key
+
+# Logs có thể chứa sensitive data
+logs/*.log
+logs/security.log
+
+# Database dumps
+*.sql
+*.db
+
+# Backup files
+*.backup
+*.bak
+temp/
+
+# SECRETS - KHÔNG BAO GIỜ COMMIT!
+secrets/
+.env
+.env.local
+.env.production
+*.key
+*.pem
+
+# Crypto keys
+keys/dilithium/
+keys/ibe/
+dilithium_*.key
+ibe_*.key
+
+# Database
+*.db
+*.sqlite
+
+# Logs có thể chứa sensitive data
+logs/
+*.log
+
+# Docker secrets
+docker-compose.override.yml
+.docker/
+
+# Backup files
+*.bak
+*.backup
+
+# SECRETS - KHÔNG BAO GIỜ COMMIT!
+secrets/
+.env
+.env.local
+.env.production
+*.key
+*.pem
+
+# Crypto keys
+keys/dilithium/
+keys/ibe/
+dilithium_*.key
+ibe_*.key
+
+# Database
+*.db
+*.sqlite
+
+# Logs có thể chứa sensitive data
+logs/
+*.log
+
+# Docker secrets
+docker-compose.override.yml
+.docker/
+
+# Backup files
+*.bak
+*.backup
+
+# SECRETS - KHÔNG BAO GIỜ COMMIT!
+secrets/
+.env
+.env.local
+.env.production
+*.key
+*.pem
+
+# Crypto keys
+keys/dilithium/
+keys/ibe/
+dilithium_*.key
+ibe_*.key
+
+# Database
+*.db
+*.sqlite
+
+# Logs có thể chứa sensitive data
+logs/
+*.log
+
+# Docker secrets
+docker-compose.override.yml
+.docker/
+
+# Backup files
+*.bak
+*.backup
+
+# SECRETS - KHÔNG BAO GIỜ COMMIT!
+secrets/
+.env
+.env.local
+.env.production
+*.key
+*.pem
+
+# Crypto keys
+keys/dilithium/
+keys/ibe/
+dilithium_*.key
+ibe_*.key
+
+# Database
+*.db
+*.sqlite
+
+# Logs có thể chứa sensitive data
+logs/
+*.log
+
+# Docker secrets
+docker-compose.override.yml
+.docker/
+
+# Backup files
+*.bak
+*.backup
