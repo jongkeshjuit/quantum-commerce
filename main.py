@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
 from decimal import Decimal
 from datetime import datetime
+from services.rate_limiter import rate_limiter
 
 # Add project root to Python path
 project_root = Path(__file__).parent
@@ -465,6 +466,16 @@ async def crypto_status():
         "ibe": {"status": "active", "algorithm": "enhanced_ibe"},
         "quantum_secure": True
     }
+    
+@app.post("/api/crypto/sign")
+async def sign_transaction(request: Request):
+    # Rate limit crypto operations
+    allowed, remaining = rate_limiter.check_rate_limit(
+        request.client.host, 
+        'crypto_sign'
+    )
+    if not allowed:
+        raise HTTPException(429, "Rate limit exceeded")
 
 @app.get("/api/payments/{payment_id}")
 async def get_payment_details(payment_id: str, current_user: dict = Depends(jwt_bearer)):

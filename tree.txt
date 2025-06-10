@@ -1,32 +1,17 @@
 .
-├── Dockerfile
-├── README.md
-├── __pycache__
-│   └── main.cpython-312.pyc
+├── all_code.txt
 ├── api
 │   └── __init__.py
-├── api_config_data_database_keys_logs_metrics.txt
 ├── config
 │   ├── __init__.py
-│   ├── __pycache__
-│   │   ├── __init__.cpython-312.pyc
-│   │   ├── database.cpython-312.pyc
-│   │   └── dev_config.cpython-312.pyc
 │   ├── database.py
 │   ├── dev_config.py
-│   ├── development_config.py
 │   ├── logging.py
 │   ├── secure_config.py
 │   ├── security.py
 │   └── vault_config.py
 ├── crypto
 │   ├── __init__.py
-│   ├── __pycache__
-│   │   ├── __init__.cpython-312.pyc
-│   │   ├── dilithium_signer.cpython-312.pyc
-│   │   ├── ibe_system.cpython-312.pyc
-│   │   ├── production_crypto.cpython-312.pyc
-│   │   └── real_dilithium.cpython-312.pyc
 │   ├── crypto_factory.py
 │   ├── dilithium_signer.py
 │   ├── hsm_integration.py
@@ -38,19 +23,15 @@
 │   ├── real_dilithium_liboqs.py
 │   └── real_ibe.py
 ├── data
+│   └── quantum_commerce.db
 ├── database
 │   ├── __init__.py
-│   ├── __pycache__
-│   │   ├── __init__.cpython-312.pyc
-│   │   ├── encryption.cpython-312.pyc
-│   │   └── schema.cpython-312.pyc
 │   ├── encryption.py
 │   ├── migrations
 │   ├── models.py
 │   └── schema.py
 ├── docker-compose-simple.yml
 ├── docker-compose.production.yml
-├── docker-compose.yml
 ├── keys
 │   ├── dilithium
 │   └── ibe
@@ -63,7 +44,6 @@
 ├── middleware
 │   ├── __init__.py
 │   └── security.py
-├── middleware_models_monitoring_nginx_secrets_security.txt
 ├── models
 │   └── __init__.py
 ├── monitoring
@@ -91,23 +71,11 @@
 │   ├── nginx.prod.conf
 │   └── ssl
 ├── requirements.txt
-├── requirements_crypto.txt
-├── requirements_missing.txt
 ├── scripts
 │   ├── create_db.py
 │   ├── create_tables.py
 │   ├── create_tables_fixed.py
-│   ├── scripts
-│   │   ├── api_with_metrics.py
-│   │   ├── init_crypto.py
-│   │   ├── key_rotation.py
-│   │   ├── quick_dev_setup.sh
-│   │   ├── recreate_tables.py
-│   │   ├── setup.sh
-│   │   ├── setup_prod_secrets.py
-│   │   ├── setup_secrets.py
-│   │   ├── setup_secrets.sh
-│   │   └── setup_vault.sh
+│   ├── init_crypto.py
 │   └── setup_production_secrets.py
 ├── secrets
 │   ├── encrypted_secrets.json
@@ -115,76 +83,54 @@
 ├── security
 │   ├── incident_response.py
 │   └── security_middleware.py
+├── security_test.py
 ├── services
 │   ├── __init__.py
-│   ├── __pycache__
-│   │   ├── __init__.cpython-312.pyc
-│   │   ├── auth_service.cpython-312.pyc
-│   │   ├── payment_service.cpython-312.pyc
-│   │   ├── rate_limiter.cpython-312.pyc
-│   │   ├── secret_manager.cpython-312.pyc
-│   │   └── session_service.cpython-312.pyc
 │   ├── auth_service.py
 │   ├── payment_service.py
 │   ├── rate_limiter.py
 │   ├── secret_manager.py
 │   └── session_service.py
-├── services_env_envlocal_envprod_env_production_dockers_main_list.txt
-├── static
-│   ├── assets
-│   │   ├── index-24bAKmhN.js
-│   │   └── index-SQx0ldFy.css
-│   ├── index.html
-│   └── vite.svg
 ├── tree.txt
-├── webapp
-│   ├── Dockerfile
-│   ├── README.md
-│   ├── eslint.config.js
-│   ├── index.html
-│   ├── netlify.toml
-│   ├── package-lock.json
-│   ├── package.json
-│   ├── postcss.config.js
-│   ├── public
-│   │   └── vite.svg
-│   ├── src
-│   │   ├── App.css
-│   │   ├── App.tsx
-│   │   ├── assets
-│   │   │   └── react.svg
-│   │   ├── components
-│   │   │   ├── Hero.tsx
-│   │   │   ├── Layout.tsx
-│   │   │   ├── PrivateRoute.tsx
-│   │   │   └── ProductCard.tsx
-│   │   ├── config
-│   │   │   └── security.ts
-│   │   ├── contexts
-│   │   │   ├── AuthContext.tsx
-│   │   │   └── CartContext.tsx
-│   │   ├── index.css
-│   │   ├── main.tsx
-│   │   ├── pages
-│   │   │   ├── AdminDashboard.tsx
-│   │   │   ├── CartPage.tsx
-│   │   │   ├── CheckoutPage.tsx
-│   │   │   ├── HomePage.tsx
-│   │   │   ├── LoginPage.tsx
-│   │   │   ├── OrderDetailsPage.tsx
-│   │   │   ├── OrderHistoryPage.tsx
-│   │   │   ├── OrderSuccessPage.tsx
-│   │   │   ├── ProductDetailPage.tsx
-│   │   │   └── RegisterPage.tsx
-│   │   ├── services
-│   │   │   └── api.ts
-│   │   └── vite-env.d.ts
-│   ├── tailwind.config.js
-│   ├── tree.txt
-│   ├── tsconfig.app.json
-│   ├── tsconfig.json
-│   ├── tsconfig.node.json
-│   └── vite.config.ts
-└── webapp.txt
+└── webapp
+    ├── Dockerfile
+    ├── netlify.toml
+    ├── postcss.config.js
+    ├── src
+    │   ├── App.css
+    │   ├── App.tsx
+    │   ├── assets
+    │   │   └── react.svg
+    │   ├── components
+    │   │   ├── Hero.tsx
+    │   │   ├── Layout.tsx
+    │   │   ├── PrivateRoute.tsx
+    │   │   └── ProductCard.tsx
+    │   ├── config
+    │   │   └── security.ts
+    │   ├── contexts
+    │   │   ├── AuthContext.tsx
+    │   │   └── CartContext.tsx
+    │   ├── index.css
+    │   ├── main.tsx
+    │   ├── pages
+    │   │   ├── AdminDashboard.tsx
+    │   │   ├── CartPage.tsx
+    │   │   ├── CheckoutPage.tsx
+    │   │   ├── HomePage.tsx
+    │   │   ├── LoginPage.tsx
+    │   │   ├── OrderDetailsPage.tsx
+    │   │   ├── OrderHistoryPage.tsx
+    │   │   ├── OrderSuccessPage.tsx
+    │   │   ├── ProductDetailPage.tsx
+    │   │   └── RegisterPage.tsx
+    │   ├── services
+    │   │   └── api.ts
+    │   └── vite-env.d.ts
+    ├── tailwind.config.js
+    ├── tsconfig.app.json
+    ├── tsconfig.json
+    ├── tsconfig.node.json
+    └── vite.config.ts
 
-45 directories, 143 files
+36 directories, 98 files

@@ -96,6 +96,12 @@ class QuantumSecureSigner:
     
     def verify_signature(self, signed_data: Dict[str, Any]) -> bool:
         """Verify quantum-secure signature"""
+        # ⚠️ Cần constant-time comparison
+        import hmac
+        result = hmac.compare_digest(
+            computed_signature,
+            provided_signature
+        )
         try:
             if not REAL_DILITHIUM:
                 return self._fallback_verify(signed_data)

@@ -20,3 +20,14 @@ groups:
         annotations:
           summary: "High error rate detected"
           description: "Error rate is {{ $value }} errors per second"
+      # Crypto anomalies
+      - alert: CryptoKeyCompromise
+        expr: crypto_key_access_anomaly > 0
+        for: 1m
+        annotations:
+          summary: "Possible key compromise detected"
+      # Transaction anomalies
+      - alert: ReplayAttackDetected  
+        expr: rate(replay_attacks_total[5m]) > 0
+        annotations:
+          summary: "Replay attack attempts detected"

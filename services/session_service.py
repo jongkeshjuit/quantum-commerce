@@ -39,6 +39,8 @@ def __init__(self):
         
     def create_session(self, user_id: int, user_data: Dict[str, Any]) -> str:
         """Create a new session"""
+        # Invalidate old sessions
+        self.destroy_all_user_sessions(user_id)
         # Generate secure session ID
         session_id = secrets.token_urlsafe(32)
         

@@ -11,12 +11,16 @@ from typing import Optional
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from crypto.hsm_integration import HSMAdapter
 import logging
 
 logger = logging.getLogger(__name__)
 
 class SecureConfig:
     """Production-ready secure configuration loader"""
+    def _get_master_key_from_hsm(self):
+        hsm = HSMAdapter()
+        return hsm.get_master_key()
     
     def __init__(self):
         self.app_env = os.getenv("APP_ENV", "development")

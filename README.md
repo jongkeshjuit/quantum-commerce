@@ -578,3 +578,24 @@ Security audit - Kiểm tra bảo mật
 Go live! 🚀
 
 tree -I 'venv|node_modules|build|dist|*.log|*.env' > tree.txt
+
+tree -I "node_modules|dist|venv|__pycache__|static|public|README.md|package-lock.json|package.json|eslint.config.js|index.html" > tree.txt
+
+find . -type f \
+  \( -name "*.py" -o -name "*.sh" -o -name "*.ts" -o -name "*.tsx" -o -name "*.yml" -o -name "*.yaml" -o -name "*.txt" -o -name "*.json" -o -name "*.conf" -o -name "*.env" -o -name "*.key" -o -name "*.dat" -o -name "*.gitignore" \) \
+  ! -path "*/__pycache__/*" \
+  ! -path "*/venv/*" \
+  ! -path "*/dist/*" \
+  ! -path "*/node_modules/*" \
+  ! -path "*/static/*" \
+  ! -path "*/public/*" \
+  ! -name "README.md" \
+  ! -name "package-lock.json" \
+  ! -name "package.json" \
+  ! -name "eslint.config.js" \
+  ! -name "index.html" \
+  | sort | while IFS= read -r f; do
+    echo "===== FILE: $f =====" >> all_code.txt
+    cat "$f" >> all_code.txt
+    echo -e "\n" >> all_code.txt
+done
