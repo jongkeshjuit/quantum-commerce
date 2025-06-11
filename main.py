@@ -260,7 +260,7 @@ async def register(
         "email": request.email,
         "username": request.username,
         "full_name": request.full_name,
-        "password_hash": password_hash,  # ← LUU PASSWORD HASH
+        "password_hash": password_hash,
         "is_admin": False,
         "created_at": datetime.utcnow().isoformat()
     }
@@ -268,7 +268,7 @@ async def register(
     # Store user in memory
     users_storage[request.email] = user_data
     
-    # Create access token (không gồm password)
+    # Create access token
     token_data = {
         "user_id": user_data["id"],
         "sub": user_data["email"],
@@ -280,11 +280,18 @@ async def register(
     
     logger.info(f"✅ User registered: {request.email}")
     
+    # UPDATED: Consistent format
     return {
         "message": "Registration successful",
         "access_token": access_token,
         "token_type": "bearer",
-        "user": token_data  # Không trả password
+        "user": {
+            "id": user_data["id"],
+            "email": user_data["email"],
+            "username": user_data["username"],
+            "name": user_data.get("full_name", user_data["username"]),
+            "is_admin": user_data["is_admin"]
+        }
     }
 
 @app.post("/api/auth/login") 
@@ -325,13 +332,47 @@ async def login(
     
     logger.info(f"✅ Login successful: {request.email}")
     
+    # UPDATED: Consistent format
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": token_data
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "username": user["username"],
+            "name": user.get("full_name", user["username"]),
+            "is_admin": user["is_admin"]
+        }
     }
 
-# Debug endpoint để xem users đã register
+@app.get("/api/users/me")
+async def get_current_user(
+    current_user: dict = Depends(jwt_bearer),
+    db: Session = Depends(get_db)
+):
+    """Get current user information"""
+    # UPDATED: Return consistent user format
+    user_email = current_user.get("sub") or current_user.get("email")
+    
+    if user_email and user_email in users_storage:
+        user = users_storage[user_email]
+        return {
+            "id": user["id"],
+            "email": user["email"],
+            "username": user["username"],
+            "name": user.get("full_name", user["username"]),
+            "is_admin": user["is_admin"]
+        }
+    
+    # Fallback to current_user data
+    return {
+        "id": current_user.get("user_id"),
+        "email": current_user.get("email"),
+        "username": current_user.get("username"),
+        "name": current_user.get("username"),
+        "is_admin": current_user.get("is_admin", False)
+    }
+
 @app.get("/api/debug/users")
 async def debug_users():
     """Debug: xem users đã register (DEVELOPMENT ONLY)"""
@@ -339,13 +380,39 @@ async def debug_users():
         "total_users": len(users_storage),
         "users": [
             {
+                "id": user["id"],
                 "email": email,
                 "username": user["username"],
+                "name": user.get("full_name", user["username"]),
+                "is_admin": user["is_admin"],
                 "created_at": user["created_at"]
             }
             for email, user in users_storage.items()
         ]
     }
+
+@app.get("/api/admin/stats")
+async def get_admin_stats(
+    current_user: dict = Depends(jwt_bearer),
+    db: Session = Depends(get_db)
+):
+    """Get admin statistics"""
+    if not current_user.get("is_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    # UPDATED: Include real data from storage
+    return {
+        "total_users": len(users_storage),
+        "total_transactions": len(orders_storage),
+        "total_revenue": sum(order["amount"] for order in orders_storage.values()),
+        "active_sessions": 1,  # Mock for now
+        "crypto_operations": 100,  # Mock for now
+        "last_updated": datetime.utcnow().isoformat()
+    }
+
 
 @app.post("/api/auth/logout")
 async def logout(
@@ -560,14 +627,6 @@ async def verify_payment(
         logger.error(f"Verification error: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Verification failed: {str(e)}")
 
-@app.get("/api/users/me")
-async def get_current_user(
-    current_user: dict = Depends(jwt_bearer),
-    db: Session = Depends(get_db)
-):
-    """Get current user information"""
-    return current_user
-
 @app.get("/api/crypto/ibe/public-params")
 async def get_ibe_params():
     """Get IBE public parameters"""
@@ -594,23 +653,6 @@ async def get_metrics():
         "crypto_operations": 9999
     }
 
-@app.get("/api/admin/stats")
-async def get_admin_stats(
-    current_user: dict = Depends(jwt_bearer),
-    db: Session = Depends(get_db)
-):
-    """Get admin statistics"""
-    if not current_user.get("is_admin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
-    
-    return {
-        "total_users": 100,
-        "total_transactions": 1000,
-        "total_revenue": 50000.00
-    }
 
 # Error Handlers
 @app.exception_handler(HTTPException)

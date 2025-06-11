@@ -53,7 +53,7 @@ class Transaction(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     
     # Encrypted sensitive data
-    payment_data = Column(EncryptedJSON, nullable=False)
+    payment_data = Column(EncryptedJSON, nullable=False) #fernet encrypted payment details
     shipping_address = Column(EncryptedJSON)
     billing_address = Column(EncryptedJSON)
     

@@ -76,6 +76,8 @@
 │   ├── create_tables.py
 │   ├── create_tables_fixed.py
 │   ├── init_crypto.py
+│   ├── setup_prod_secrets.py
+│   ├── setup_prod_secrets.py:Zone.Identifier
 │   └── setup_production_secrets.py
 ├── secrets
 │   ├── encrypted_secrets.json
@@ -83,9 +85,9 @@
 ├── security
 │   ├── incident_response.py
 │   └── security_middleware.py
-├── security_test.py
 ├── services
 │   ├── __init__.py
+│   ├── auth_service.backup
 │   ├── auth_service.py
 │   ├── payment_service.py
 │   ├── rate_limiter.py
@@ -133,4 +135,4 @@
     ├── tsconfig.node.json
     └── vite.config.ts
 
-36 directories, 98 files
+36 directories, 100 files

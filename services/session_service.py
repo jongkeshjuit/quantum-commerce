@@ -14,9 +14,8 @@ logger = logging.getLogger(__name__)
 
 class SessionService:
     """Secure session management with Redis"""
-    
-    # Thêm vào đầu class SessionService:
-def __init__(self):
+
+    def __init__(self):
     try:
         # Redis connection
         self.redis_client = redis.from_url(
